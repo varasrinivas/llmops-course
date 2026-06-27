@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Production LLMOps — AI Application Lifecycle</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f6f3ec;--surface:#fff;--text:#2c2a26;--text-muted:#6b6560;--border:#e0dbd3;
+    --accent-t1:#2d6a4f;--accent-t2:#e07a5f;--accent-t3:#3d5a80;--accent-t4:#d4890b;
+    --accent-t5:#81b29a;--accent-t6:#a44a3f;--accent-t7:#5e548e;--accent-t8:#264653;
+    --font-display:'Fraunces',serif;--font-body:'Inter',sans-serif;--font-mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.65}
+  .hero{background:linear-gradient(135deg,#264653 0%,#2d6a4f 40%,#3d5a80 100%);color:#f6f3ec;padding:56px 32px 48px;text-align:center}
+  .hero-eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#81b29a;margin-bottom:16px}
+  .hero h1{font-family:var(--font-display);font-size:clamp(26px,5vw,42px);font-weight:700;line-height:1.15;margin-bottom:12px}
+  .hero h1 em{font-style:italic;font-weight:300;color:#81b29a}
+  .hero-sub{font-size:16px;color:#a8c4b8;max-width:640px;margin:0 auto 28px;line-height:1.6}
+  .hero-stats{display:flex;justify-content:center;gap:36px;flex-wrap:wrap}
+  .hero-stat .num{font-family:var(--font-display);font-size:32px;font-weight:700;display:block}
+  .hero-stat .label{font-family:var(--font-mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#7a9e94}
+  .positioning{max-width:860px;margin:0 auto;padding:40px 24px 0}
+  .ecosystem-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:28px;margin-bottom:32px}
+  .ecosystem-box h2{font-family:var(--font-display);font-size:20px;font-weight:500;margin-bottom:16px}
+  .ecosystem-flow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .eco-pill{padding:10px 18px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:500;text-align:center;line-height:1.4}
+  .eco-pill.active{background:#264653;color:#f6f3ec;border:2px solid #264653}
+  .eco-pill.linked{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+  .eco-arrow{font-size:18px;color:var(--text-muted)}
+  .ecosystem-note{font-size:13px;color:var(--text-muted);text-align:center;font-style:italic}
+  .track-nav{max-width:860px;margin:0 auto;padding:0 24px 16px;display:flex;flex-wrap:wrap;gap:6px}
+  .track-nav button{font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;padding:6px 14px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text-muted);cursor:pointer;transition:all .2s}
+  .track-nav button:hover{border-color:var(--text);color:var(--text)}
+  .track-nav button.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+  .tracks-container{max-width:860px;margin:0 auto;padding:0 24px 60px}
+  .track{margin-bottom:36px;display:none}.track.visible{display:block}
+  .track-header{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;padding-bottom:10px;border-bottom:2px solid var(--track-color)}
+  .track-num{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--track-color)}
+  .track-title{font-family:var(--font-display);font-size:22px;font-weight:500}
+  .track-desc{color:var(--text-muted);font-size:14px;margin:12px 0 20px;line-height:1.6}
+  .module-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--track-color);border-radius:4px;padding:20px 22px;margin-bottom:12px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+  .module-card:hover{border-color:var(--track-color);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .module-card.expanded{border-color:var(--track-color)}
+  .module-top{display:flex;align-items:baseline;gap:12px}
+  .module-id{font-family:var(--font-mono);font-size:12px;color:var(--track-color);font-weight:500;min-width:32px}
+  .module-name{font-family:var(--font-display);font-size:17px;font-weight:500;flex:1}
+  .module-expand{font-size:14px;color:var(--text-muted);transition:transform .2s}
+  .module-card.expanded .module-expand{transform:rotate(90deg)}
+  .module-detail{display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+  .module-card.expanded .module-detail{display:block}
+  .detail-section{margin-bottom:14px}
+  .detail-label{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px}
+  .detail-content{font-size:14px;line-height:1.6}
+  .detail-content ul{list-style:none;padding:0}
+  .detail-content li{padding:2px 0 2px 16px;position:relative;font-size:13.5px}
+  .detail-content li::before{content:'→';position:absolute;left:0;color:var(--track-color);font-size:12px}
+  .crosslink{display:inline-block;background:#eee8dd;color:var(--text);font-family:var(--font-mono);font-size:11px;padding:2px 8px;border-radius:3px;margin:2px 4px 2px 0}
+  .crosslink.ce{background:#dde8dd;color:#2d5a38}.crosslink.agent{background:#ddeedd;color:#3a5a38}
+  .crosslink.sdlc{background:#dde3e8;color:#2e5a78}.crosslink.platform{background:#e8dde8;color:#5a386b}
+  .lab-tag{display:inline-block;font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:3px;margin-right:6px}
+  .lab-tag.understand{background:#e8f0e6;color:#3a6b38}.lab-tag.build{background:#e6e8f0;color:#384a6b}
+  .analogy-box{background:#faf8f3;border-left:3px solid #d4c5a9;padding:10px 14px;border-radius:0 4px 4px 0;font-size:13.5px;color:var(--text-muted);font-style:italic;margin-top:8px}
+  .appendix{max-width:860px;margin:0 auto;padding:0 24px 48px}
+  .appendix h2{font-family:var(--font-display);font-size:20px;font-weight:500;margin-bottom:16px}
+  .xref-table{width:100%;border-collapse:collapse;font-size:13px}
+  .xref-table th{font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;text-align:left;padding:8px 12px;border-bottom:2px solid var(--text);color:var(--text-muted)}
+  .xref-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  .xref-table tr:hover{background:#faf8f3}
+  @media(max-width:600px){.hero{padding:36px 20px 32px}.track-nav{gap:4px}.track-nav button{font-size:10px;padding:5px 10px}.ecosystem-flow{flex-direction:column;gap:4px}.eco-arrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">New Course — ai.varasrinivas.com</div>
+  <h1>Production LLMOps<br><em>AI Application Lifecycle</em></h1>
+  <p class="hero-sub">The "day 2" discipline — evaluating, deploying, monitoring, upgrading, and governing LLM applications in production. Everything that happens after "it works on my laptop."</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><span class="num">32</span><span class="label">Modules</span></div>
+    <div class="hero-stat"><span class="num">8</span><span class="label">Tracks</span></div>
+    <div class="hero-stat"><span class="num">64</span><span class="label">Labs</span></div>
+    <div class="hero-stat"><span class="num">16</span><span class="label">Ecosystem Links</span></div>
+  </div>
+</div>
+
+<div class="positioning">
+  <div class="ecosystem-box">
+    <h2>Five-Pillar Curriculum Ecosystem</h2>
+    <div class="ecosystem-flow">
+      <div class="eco-pill linked">Context Eng.<br><span style="font-size:10px;opacity:.7">Science</span></div>
+      <span class="eco-arrow">→</span>
+      <div class="eco-pill linked">AI Agents<br><span style="font-size:10px;opacity:.7">Applied</span></div>
+      <span class="eco-arrow">→</span>
+      <div class="eco-pill linked">AI Platform<br><span style="font-size:10px;opacity:.7">Infrastructure</span></div>
+      <span class="eco-arrow">→</span>
+      <div class="eco-pill active">LLMOps<br><span style="font-size:10px;opacity:.7">Operations</span></div>
+      <span class="eco-arrow">→</span>
+      <div class="eco-pill linked">AI-SDLC<br><span style="font-size:10px;opacity:.7">Process</span></div>
+    </div>
+    <p class="ecosystem-note">LLMOps is the operational discipline — it runs on the AI Platform, operates the Agents, and integrates into the AI-SDLC.<br>Target audience: ML engineers, SREs, DevOps engineers, and engineering managers running AI in production.</p>
+  </div>
+</div>
+
+<div class="track-nav" id="trackNav">
+  <button class="active" data-track="all">All Tracks</button>
+  <button data-track="t1">T1 Foundations</button>
+  <button data-track="t2">T2 Eval & Testing</button>
+  <button data-track="t3">T3 Deployment</button>
+  <button data-track="t4">T4 Monitoring</button>
+  <button data-track="t5">T5 Feedback Loops</button>
+  <button data-track="t6">T6 Model Lifecycle</button>
+  <button data-track="t7">T7 Reliability</button>
+  <button data-track="t8">T8 Governance</button>
+</div>
+
+<div class="tracks-container" id="tracksContainer"></div>
+
+<div class="appendix" id="appendix">
+  <h2>Ecosystem Cross-Reference Map</h2>
+  <table class="xref-table">
+    <thead><tr><th>LLMOps Module</th><th>Other Course</th><th>Relationship</th></tr></thead>
+    <tbody>
+      <tr><td>M04–M07 Eval & Testing</td><td>CE M29 Context A/B Testing</td><td>LLMOps automates evals at scale; CE designs what to evaluate</td></tr>
+      <tr><td>M05 LLM-as-Judge</td><td>Platform M10 Prompt Eval</td><td>Same technique, LLMOps focuses on production automation</td></tr>
+      <tr><td>M08–M11 Deployment</td><td>Platform M11 Prompt Deployment</td><td>LLMOps deploys the full app; Platform deploys prompts</td></tr>
+      <tr><td>M09 Canary & Progressive</td><td>AI-SDLC CI/CD Track</td><td>LLMOps adds LLM-specific canary metrics</td></tr>
+      <tr><td>M12–M15 Monitoring</td><td>Platform M28 Observability</td><td>LLMOps adds application-level monitoring; Platform provides infra-level</td></tr>
+      <tr><td>M13 Quality Drift</td><td>CE M14 Context Decay</td><td>Same concept — LLMOps detects it; CE prevents it</td></tr>
+      <tr><td>M16–M19 Feedback Loops</td><td>Agent M15 HITL</td><td>LLMOps systematizes feedback; Agents implement HITL flows</td></tr>
+      <tr><td>M20–M23 Model Lifecycle</td><td>Platform M05 Multi-Provider</td><td>LLMOps manages upgrades; Platform routes across providers</td></tr>
+      <tr><td>M24–M27 Reliability</td><td>Platform M07 Gateway Resilience</td><td>LLMOps covers app-level reliability; Platform covers infra-level</td></tr>
+      <tr><td>M28–M30 Governance</td><td>Platform M16–M19 Cost</td><td>LLMOps optimizes app-level costs; Platform governs org-level budgets</td></tr>
+      <tr><td>M31 Capstone</td><td>All capstones</td><td>LLMOps capstone operates the UCC pipeline that other capstones build</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const TRACKS = [
+  {
+    id:'t1',color:'var(--accent-t1)',num:'Track 1',title:'Foundations',
+    desc:'What LLMOps is, how it differs from traditional MLOps, and the lifecycle stages every LLM application moves through — from prototype to production to retirement.',
+    modules:[
+      {id:'M00',name:'Course Orientation & The LLMOps Manifesto',
+        topics:['Why "it works on my laptop" is the beginning, not the end','LLMOps vs MLOps vs DevOps — what\'s different about LLM applications','The LLM application lifecycle: Build → Evaluate → Deploy → Monitor → Feedback → Upgrade','Setting up the UCC LLMOps sandbox: a production-like pipeline with observability'],
+        analogy:'Launching a restaurant vs cooking at home. Cooking a great meal at home (prototype) is very different from running a restaurant (production). The restaurant needs health inspections (evaluation), consistent recipes (prompt versioning), food safety logs (monitoring), customer feedback cards (feedback loops), and a plan for when the chef is sick (reliability). LLMOps is everything it takes to run the restaurant, not just cook the meal.',
+        labs:['Understand It: Map a real LLM application\'s lifecycle — identify which stages have tooling and which are manual/missing','Build It with AI: Set up the UCC LLMOps sandbox: a deployed extraction pipeline with eval suite, monitoring, and feedback collection stubs'],
+        crosslinks:[]},
+      {id:'M01',name:'LLMOps vs MLOps — What\'s Different About LLM Applications',
+        topics:['No training loop: LLMs are pre-trained, you engineer the context, not the model','Prompt = code: behavior changes without redeployment (and that\'s dangerous)','Non-determinism at scale: same input, different output across runs','Evaluation is harder: no single metric, subjective quality, domain-specific correctness'],
+        analogy:'Traditional ML is like manufacturing: you design the machine (model), train it on specifications (training data), and it produces consistent output. LLMOps is like managing a team of expert consultants: they\'re already skilled (pre-trained), you give them briefs (prompts), but their recommendations vary each time, and "good" is harder to measure than "accurate."',
+        labs:['Understand It: Run the same UCC extraction prompt 20 times — measure output variance across runs','Build It with AI: Build a variance analyzer that quantifies output consistency for UCC debtor extraction'],
+        crosslinks:[{type:'sdlc',label:'AI-SDLC Foundations'}]},
+      {id:'M02',name:'The LLM Application Stack — Components You Must Operate',
+        topics:['The 6 operational components: prompts, retrieval, tools, guardrails, memory, orchestration','Which components change frequently (prompts, retrieval index) vs rarely (orchestration)','Dependency mapping: when a component changes, what else breaks?','Operational complexity score: rating your application\'s ops burden'],
+        analogy:'A car has components that need different maintenance schedules. Oil (prompts) changes every 5,000 miles. Tires (retrieval index) every 30,000. Transmission (orchestration) rarely. Brakes (guardrails) on inspection. You don\'t service everything at once — you maintain each on its own schedule. LLMOps is the maintenance schedule for your AI application.',
+        labs:['Understand It: Decompose the UCC extraction pipeline into 6 operational components — rate each for change frequency and blast radius','Build It with AI: Create a dependency map and maintenance schedule for the UCC pipeline with Claude'],
+        crosslinks:[{type:'platform',label:'Platform M03 Architecture'}]},
+      {id:'M03',name:'The LLMOps Toolchain — Open Source & Commercial Landscape',
+        topics:['Evaluation: Promptfoo, DeepEval, Ragas, Braintrust','Observability: LangSmith, Langfuse, Arize Phoenix, OpenLLMetry','Deployment: LitServe, vLLM, Modal, Replicate','The build vs buy decision matrix for each lifecycle stage'],
+        analogy:'A mechanic\'s garage has specialized tools for each job: diagnostic scanner (eval tools), multimeter (observability), lift (deployment), and torque wrench (testing). You could use pliers for everything, but the right tool makes the job faster, safer, and more reliable. The LLMOps toolchain is your professional-grade garage.',
+        labs:['Understand It: Evaluate 3 observability tools (LangSmith, Langfuse, Arize) on the UCC pipeline — compare features, pricing, and integration effort','Build It with AI: Set up Langfuse observability on the UCC pipeline and trace 10 extraction requests end-to-end'],
+        crosslinks:[]}
+    ]
+  },
+  {
+    id:'t2',color:'var(--accent-t2)',num:'Track 2',title:'Evaluation & Testing',
+    desc:'You can\'t improve what you can\'t measure. This track builds the evaluation infrastructure that tells you whether your LLM application is working — before and after every change.',
+    modules:[
+      {id:'M04',name:'Evaluation Frameworks — Measuring What Matters',
+        topics:['The eval taxonomy: correctness, faithfulness, relevance, safety, latency, cost','Task-specific metrics: exact match, fuzzy match, F1, BLEU, ROUGE, semantic similarity','Composite scores: weighting multiple metrics into a single quality signal','Eval datasets: golden sets, silver sets, synthetic generation'],
+        analogy:'A school has different types of tests for different purposes. Pop quizzes (unit evals) check one concept. Midterms (integration evals) check understanding across topics. Final exams (regression suites) check everything. And the SAT (benchmark) compares you against everyone else. Each tells you something different, and skipping any leaves blind spots.',
+        labs:['Understand It: Design an eval framework for UCC debtor extraction — define metrics for correctness, completeness, and format compliance','Build It with AI: Build a 100-query eval suite for UCC extraction with golden answers and automated scoring'],
+        crosslinks:[{type:'ce',label:'CE M29 A/B Testing'}]},
+      {id:'M05',name:'LLM-as-Judge — Automated Quality Assessment at Scale',
+        topics:['Why LLM-as-judge works: using one model to evaluate another','Judge prompt engineering: rubrics, scoring criteria, chain-of-thought evaluation','Calibration: ensuring judge scores correlate with human scores','Multi-judge panels: reducing bias with multiple judge prompts or models'],
+        analogy:'Restaurant critics. A single critic (one judge prompt) has biases. Michelin uses anonymous inspectors with specific criteria (rubric-based judging). And a restaurant that only measures "stars" misses details. The best evaluation combines multiple critics with explicit scoring rubrics, then calibrates against trusted human reviewers.',
+        labs:['Understand It: Build 3 judge prompts for UCC extraction — compare their scoring against human-annotated ground truth','Build It with AI: Implement a multi-judge evaluation panel for UCC outputs with calibration against 20 human-scored examples'],
+        crosslinks:[{type:'platform',label:'Platform M10 Prompt Eval'}]},
+      {id:'M06',name:'Regression Testing — Catching What Breaks',
+        topics:['What causes regressions: prompt changes, model upgrades, retrieval index updates, dependency changes','Regression test design: representative queries, edge cases, previously-failed queries','Automated regression pipelines: run on every change, block deployment on failure','The regression budget: how many failures are acceptable before blocking?'],
+        analogy:'A bridge undergoes load testing after every repair. You don\'t just test the repaired section — you test the whole bridge because fixing one beam can shift stress to another. Regression testing does the same: after any change, test everything because LLM applications have hidden interdependencies that surface unexpectedly.',
+        labs:['Understand It: Identify the top 5 regression risk factors for the UCC pipeline — rank by likelihood and impact','Build It with AI: Build a regression test suite that runs automatically on UCC prompt changes and blocks deployment on >5% accuracy drop'],
+        crosslinks:[]},
+      {id:'M07',name:'Adversarial Testing & Red-Teaming — Finding Failures Before Users Do',
+        topics:['Red-teaming methodology: systematic adversarial probing of LLM applications','Attack surface mapping: injection, jailbreaks, data extraction, hallucination triggers','Automated red-teaming: using LLMs to generate adversarial inputs','Continuous red-teaming: integrating adversarial tests into CI/CD'],
+        analogy:'Banks hire professional burglars to test their vaults. The burglars (red team) try every technique — lock picking, tunneling, social engineering — and report what worked. The bank fixes the vulnerabilities before real criminals find them. Red-teaming LLMs is hiring professional "prompt burglars" to find the weaknesses in your application.',
+        labs:['Understand It: Red-team the UCC extraction endpoint — document 10 adversarial inputs and their outcomes','Build It with AI: Build an automated red-team pipeline that generates adversarial UCC filings and tests the extraction endpoint\'s resilience'],
+        crosslinks:[{type:'ce',label:'CE M20 Input Guardrails'},{type:'platform',label:'Platform M12 Guardrails'}]}
+    ]
+  },
+  {
+    id:'t3',color:'var(--accent-t3)',num:'Track 3',title:'Deployment & Release',
+    desc:'Getting LLM applications from "works in dev" to "serving traffic safely" — CI/CD pipelines, canary deployments, feature flags, and rollback strategies designed for non-deterministic systems.',
+    modules:[
+      {id:'M08',name:'CI/CD for LLM Applications — The Pipeline That Ships AI',
+        topics:['LLM CI pipeline: lint prompts → run evals → check guardrails → build container','LLM CD pipeline: deploy → canary → evaluate → promote or rollback','What to version: prompts, retrieval configs, guardrail rules, model pinning','Artifact management: storing and retrieving versioned LLM configurations'],
+        analogy:'A pharmaceutical production line. Raw ingredients (prompts, configs) go through quality checks (eval suite), sterility testing (guardrails), packaging (containerization), and controlled release (canary deployment). Nothing ships without passing every station. And every batch has a lot number (version) for traceability.',
+        labs:['Understand It: Map the UCC pipeline\'s current deployment process — identify manual steps that should be automated','Build It with AI: Build a GitHub Actions CI/CD pipeline for the UCC extractor: lint → eval → deploy → smoke test'],
+        crosslinks:[{type:'sdlc',label:'AI-SDLC CI/CD Track'}]},
+      {id:'M09',name:'Canary & Progressive Deployment — Safe Rollouts for Uncertain Systems',
+        topics:['Why canary is essential for LLMs: you can\'t unit-test non-deterministic behavior','Canary metrics for LLMs: quality score, latency, error rate, user feedback, cost per request','Progressive rollout: 1% → 10% → 50% → 100% with automatic gates','Shadow deployment: running new version alongside old, comparing outputs without serving'],
+        analogy:'A bakery testing a new bread recipe. You don\'t replace all loaves on day one. You bake 10 new-recipe loaves alongside 100 old ones (shadow). Give new loaves to your most forgiving regulars (canary 1%). If they like it, expand to the morning rush (10%), then all day (100%). If complaints spike at any stage, revert immediately.',
+        labs:['Understand It: Design canary metrics and rollout gates for a UCC extraction model upgrade','Build It with AI: Implement shadow deployment for UCC extraction — run v1 and v2 side-by-side, compare outputs, generate a promotion report'],
+        crosslinks:[{type:'platform',label:'Platform M11 Prompt Deployment'}]},
+      {id:'M10',name:'Feature Flags & Experimentation — Controlled Exposure',
+        topics:['Feature flags for LLM apps: toggle prompts, models, guardrails, and retrieval strategies','A/B experiments: splitting traffic to compare LLM configurations','Experimentation platforms: LaunchDarkly, Statsig, Eppo, or roll-your-own','Statistical rigor: sample sizes, confidence intervals, avoiding peeking'],
+        analogy:'A TV network pilot season. New shows (configurations) are tested with focus groups (A/B split) before committing to a full season (rollout). Some shows test well in one demographic but not another (segment-based flags). The network only commits budget (production traffic) to winners — and sometimes a show that tested poorly becomes a hit when the format changes (iteration).',
+        labs:['Understand It: Design an A/B experiment for the UCC pipeline — old prompt vs new prompt, define metrics and sample size','Build It with AI: Implement feature-flagged prompt switching for UCC extraction with automatic metric collection and winner declaration'],
+        crosslinks:[]},
+      {id:'M11',name:'Rollback & Recovery — When Things Go Wrong in Production',
+        topics:['Instant rollback: reverting to last-known-good prompt, model, or retrieval config','Rollback triggers: automatic (quality drops below threshold) vs manual (on-call decision)','State management: what happens to in-flight requests during rollback?','Post-rollback analysis: understanding what went wrong and preventing recurrence'],
+        analogy:'An airplane\'s go-around procedure. If landing conditions aren\'t right (quality metrics degrading), the pilot doesn\'t commit to the runway — they pull up, circle around (rollback), and try again or divert (fallback). The decision is pre-planned (automatic triggers), the procedure is practiced (runbooks), and there\'s always enough fuel for one more attempt (rollback buffer).',
+        labs:['Understand It: Document the rollback procedure for the UCC pipeline — trigger conditions, steps, verification, and communication','Build It with AI: Implement automatic rollback for UCC extraction: if quality score drops >10% on canary, revert to previous version within 60 seconds'],
+        crosslinks:[]}
+    ]
+  },
+  {
+    id:'t4',color:'var(--accent-t4)',num:'Track 4',title:'Monitoring & Observability',
+    desc:'LLM applications degrade silently — quality drops, costs creep, hallucinations increase — with no 500 errors to alert on. This track builds the monitoring that catches what traditional APM misses.',
+    modules:[
+      {id:'M12',name:'LLM-Specific Metrics — Beyond Latency and Error Rate',
+        topics:['The LLM metrics taxonomy: quality, cost, latency, safety, user satisfaction','Quality metrics: hallucination rate, faithfulness, completeness, format compliance','Cost metrics: tokens per request, cost per request, cost per successful extraction','Leading vs lagging indicators: catching problems before users complain'],
+        analogy:'A hospital doesn\'t just monitor heart rate (latency) and breathing (error rate). They track blood pressure (cost), temperature (quality), pain level (user satisfaction), and lab results (safety). An ICU monitor that only showed heart rate would miss most problems. LLM monitoring needs the full vitals panel.',
+        labs:['Understand It: Define the full metrics panel for the UCC extraction pipeline — 15 metrics across quality, cost, latency, safety','Build It with AI: Instrument the UCC pipeline to emit all 15 metrics to Prometheus, build a Grafana dashboard with alert thresholds'],
+        crosslinks:[{type:'platform',label:'Platform M28 Observability'}]},
+      {id:'M13',name:'Quality Drift Detection — When Your LLM Slowly Gets Worse',
+        topics:['What causes drift: model updates, retrieval index staleness, user behavior changes, data distribution shift','Drift detection methods: statistical process control, sliding window comparisons, reference distribution tests','Alert design: when to page vs warn vs log — avoiding alert fatigue','Drift diagnosis: tracing a quality drop to its root cause'],
+        analogy:'A car\'s wheel alignment drifts gradually. You don\'t notice until the tires wear unevenly (users complain). Regular alignment checks (drift monitoring) catch the problem when it\'s a minor adjustment, not a tire replacement. LLM quality drifts the same way — slowly, silently, expensively.',
+        labs:['Understand It: Analyze 30 days of UCC extraction logs — identify any quality drift patterns (declining accuracy, changing error types)','Build It with AI: Build a drift detector that compares today\'s UCC extraction quality against a 7-day rolling baseline and alerts on >3% degradation'],
+        crosslinks:[{type:'ce',label:'CE M14 Context Decay'}]},
+      {id:'M14',name:'Distributed Tracing for LLM Pipelines — Following a Request End-to-End',
+        topics:['Trace anatomy: spans for each pipeline stage (retrieval, guardrails, LLM call, post-processing)','LLM-specific span attributes: token counts, model used, cache hit/miss, guardrail pass/fail','Trace-based debugging: finding why a specific request produced a wrong answer','Trace sampling: capturing enough traces without drowning in data'],
+        analogy:'A postal tracking system. When you ship a package (request), you can see every stop: sorting facility (retrieval), customs inspection (guardrails), airplane (LLM call), local delivery (post-processing). If the package arrives damaged, you trace back through every stop to find where the problem occurred. Distributed tracing is tracking for AI requests.',
+        labs:['Understand It: Trace 5 UCC extraction requests end-to-end — identify the slowest and most expensive spans','Build It with AI: Add OpenTelemetry tracing to the UCC pipeline with custom spans and attributes, visualize in Jaeger'],
+        crosslinks:[]},
+      {id:'M15',name:'User Experience Monitoring — Measuring What Users Actually Experience',
+        topics:['Implicit signals: response time, retry rate, abandonment, follow-up questions','Explicit signals: thumbs up/down, corrections, escalations to human','Funnel analysis: where users drop off in multi-step AI workflows','Session-level quality: aggregating per-request metrics into user journey scores'],
+        analogy:'A store tracks more than just sales (accuracy). They watch how long customers browse (engagement), how many pick up items and put them back (corrections), how many leave without buying (abandonment), and how many ask for a manager (escalations). Each signal tells a different story about the actual customer experience.',
+        labs:['Understand It: Design a user experience monitoring plan for the UCC extraction tool — define 8 signals across implicit and explicit categories','Build It with AI: Implement feedback collection and session-level quality scoring for the UCC pipeline with a simple analyst dashboard'],
+        crosslinks:[]}
+    ]
+  },
+  {
+    id:'t5',color:'var(--accent-t5)',num:'Track 5',title:'Data & Feedback Loops',
+    desc:'The virtuous cycle — collecting human feedback, curating training/eval data, and building the data flywheel that makes your LLM application improve over time instead of decaying.',
+    modules:[
+      {id:'M16',name:'Human Feedback Collection — Building the Signal Pipeline',
+        topics:['Feedback mechanisms: binary (good/bad), ratings (1-5), corrections (edited output), preferences (A vs B)','Feedback UI design: minimizing friction, maximizing signal quality','Sampling strategies: which outputs to request feedback on (random, uncertain, high-stakes)','Feedback fatigue: keeping users willing to provide feedback over time'],
+        analogy:'A hotel comment card system. Cards in every room (accessible feedback UI), specific questions not just "how was your stay?" (structured feedback), focus on recently renovated rooms (targeted sampling), and a short card that takes 30 seconds (low friction). Hotels that get feedback right improve faster than those that guess what guests want.',
+        labs:['Understand It: Design a feedback collection system for UCC extraction — what to ask, when to ask, how to store','Build It with AI: Build a feedback widget for the UCC extraction tool: thumbs up/down + optional correction field, stored in a structured feedback database'],
+        crosslinks:[{type:'agent',label:'Agent M15 HITL'}]},
+      {id:'M17',name:'Data Curation & Annotation — From Feedback to Training Data',
+        topics:['Feedback → eval data pipeline: filtering, deduplicating, and annotating raw feedback','Annotation workflows: internal team, crowd-sourced, LLM-assisted annotation','Data quality: inter-annotator agreement, edge case resolution, guideline documents','Growing the golden set: continuously expanding eval data from production feedback'],
+        analogy:'A museum\'s acquisition process. Random donations (raw feedback) are assessed by curators (annotation), cataloged with provenance (metadata), authenticated (quality checks), and either added to the permanent collection (golden set) or the study collection (silver set). The permanent collection grows slowly but represents the museum\'s highest standard.',
+        labs:['Understand It: Take 50 UCC feedback entries — filter, annotate, and add the best 10 to the golden eval set','Build It with AI: Build an LLM-assisted annotation pipeline that pre-labels UCC feedback entries and routes uncertain cases to human review'],
+        crosslinks:[]},
+      {id:'M18',name:'The Data Flywheel — Continuous Improvement Loops',
+        topics:['The flywheel: serve → collect feedback → improve → serve better → collect more feedback','Flywheel metrics: improvement rate per feedback cycle, time-to-improvement','Active learning: prioritizing feedback collection on uncertain or high-value examples','The cold start problem: bootstrapping the flywheel when you have no production data'],
+        analogy:'Amazon\'s famous flywheel: lower prices → more customers → more sellers → lower prices. The LLM flywheel works the same: better extraction → more analyst trust → more corrections submitted → better extraction. Each rotation makes the next one easier. But the first rotation is the hardest — someone has to push to get it spinning.',
+        labs:['Understand It: Map the UCC data flywheel — identify the current bottleneck preventing faster improvement cycles','Build It with AI: Implement the first rotation: collect 1 week of UCC feedback, curate it, update the eval set, measure improvement'],
+        crosslinks:[]},
+      {id:'M19',name:'Synthetic Data & Augmentation — Scaling Beyond Human Feedback',
+        topics:['Synthetic eval data: using LLMs to generate test cases you can\'t get from production','Augmentation strategies: paraphrasing, edge case generation, adversarial examples','Quality control for synthetic data: ensuring generated data is realistic and useful','Combining synthetic and real: the optimal mix for eval and fine-tuning'],
+        analogy:'Flight simulators. Pilots can\'t train for every emergency in a real airplane (production data). Simulators generate scenarios that are rare but critical: engine failure, wind shear, instrument failure (synthetic data). The best training combines simulator hours with real flight hours — neither alone is sufficient.',
+        labs:['Understand It: Generate 50 synthetic UCC filings with Claude — include 10 edge cases that rarely appear in production','Build It with AI: Build a synthetic data generator for UCC that creates realistic filings with controllable difficulty levels and known ground truth'],
+        crosslinks:[]}
+    ]
+  },
+  {
+    id:'t6',color:'var(--accent-t6)',num:'Track 6',title:'Model Lifecycle Management',
+    desc:'Models change — providers release new versions, deprecate old ones, change pricing, and alter behavior. This track builds the systems to manage model transitions without breaking production.',
+    modules:[
+      {id:'M20',name:'Model Versioning & Pinning — Controlling What Runs in Production',
+        topics:['Model pinning: always specify exact model versions, never use aliases in production','Version catalogs: tracking available models, their capabilities, pricing, and deprecation dates','Pin-to-upgrade workflow: pin today, evaluate tomorrow, upgrade when ready','The "model.latest" trap: why auto-upgrading models is dangerous in production'],
+        analogy:'Pharmaceutical manufacturing pins drug formulations. You don\'t just buy "aspirin" — you buy "aspirin 325mg, USP specification, lot #2024-0042." If the supplier changes the formula, you re-test before accepting the new batch. Using "model.latest" in production is like telling your pharmacist "just give me whatever\'s new."',
+        labs:['Understand It: Audit the UCC pipeline\'s model dependencies — are any using aliases or auto-upgrading versions?','Build It with AI: Implement a model version catalog and pinning system for the UCC pipeline with deprecation alerts'],
+        crosslinks:[{type:'platform',label:'Platform M05 Multi-Provider'}]},
+      {id:'M21',name:'Model Migration — Upgrading Without Breaking Production',
+        topics:['Migration assessment: evaluating the new model against your specific use cases','Shadow testing: running new model alongside old in production without serving','Gradual migration: canary → progressive rollout with quality gates','Rollback plan: what to do when the new model is worse at your specific task'],
+        analogy:'Upgrading a city\'s transit system from old buses to new ones. You don\'t retire all old buses on day one. You run new buses on one route (shadow test), compare reliability and passenger satisfaction (eval), gradually expand to more routes (canary), and keep old buses in reserve until you\'re confident (rollback plan). Some routes work better with the old buses — that\'s fine.',
+        labs:['Understand It: Plan a migration from Claude Sonnet to a new model version for UCC extraction — define the eval criteria and rollout stages','Build It with AI: Implement shadow testing for a UCC model migration: run both models, compare outputs, generate a migration readiness report'],
+        crosslinks:[]},
+      {id:'M22',name:'Multi-Model Strategies — Right Model for the Right Task',
+        topics:['Model routing: cheap models for simple tasks, expensive models for complex ones','Cascade patterns: try fast/cheap first, escalate to expensive if quality is low','Ensemble patterns: multiple models vote on the answer','Cost-quality optimization: Pareto frontier analysis for model selection'],
+        analogy:'A law firm staffs cases by complexity. Paralegals (Haiku) handle document review. Associates (Sonnet) handle standard filings. Partners (Opus) handle complex litigation. You don\'t send a partner to photocopy documents, and you don\'t send a paralegal to argue before the Supreme Court. Model routing is case assignment for AI.',
+        labs:['Understand It: Classify 50 UCC filing types by complexity — assign the optimal model tier for each','Build It with AI: Implement a cascade router for UCC: Haiku attempts first, escalates to Sonnet if confidence <0.8, with cost savings measurement'],
+        crosslinks:[]},
+      {id:'M23',name:'Model Deprecation & Sunset — Retiring What No Longer Serves You',
+        topics:['Deprecation signals: provider announcements, declining quality, rising costs, better alternatives','Deprecation timeline: notification → evaluation window → migration period → sunset','Dependency tracking: which features/teams depend on the deprecated model?','Emergency deprecation: when a model is deprecated with short notice'],
+        analogy:'A building\'s elevator reaching end-of-life. The manufacturer announces parts will be discontinued (deprecation notice). The building owner evaluates replacement options (migration assessment), schedules installation during low-traffic periods (migration window), runs old and new elevators simultaneously (parallel operation), and finally decommissions the old one (sunset). Emergency? The stairs still work (fallback model).',
+        labs:['Understand It: Create a model deprecation playbook for the UCC pipeline — timeline, communication plan, testing requirements','Build It with AI: Build a model dependency tracker and deprecation alerting system for the UCC platform'],
+        crosslinks:[]}
+    ]
+  },
+  {
+    id:'t7',color:'var(--accent-t7)',num:'Track 7',title:'Incident Management & Reliability',
+    desc:'LLM applications fail in unique ways — hallucination storms, prompt injection breaches, silent quality degradation, cost explosions. This track builds the reliability engineering practices for AI.',
+    modules:[
+      {id:'M24',name:'LLM Failure Modes — A Taxonomy of What Goes Wrong',
+        topics:['The 7 failure modes: hallucination, injection, quality drift, cost runaway, latency spike, data leakage, service outage','Severity classification: which failures are annoying vs dangerous vs catastrophic','Detection difficulty: which failures are loud (outage) vs silent (drift)','Failure cascades: how one failure triggers others in connected systems'],
+        analogy:'A hospital tracks different types of medical errors with different severity. A medication delay (latency) is different from a wrong medication (hallucination) is different from a privacy breach (data leakage). Each has its own detection method, response protocol, and prevention strategy. You can\'t treat them all the same way.',
+        labs:['Understand It: Map all 7 failure modes for the UCC extraction pipeline — rate each by likelihood, detectability, and impact','Build It with AI: Build a failure mode dashboard that monitors each failure type with appropriate detection methods and alert severities'],
+        crosslinks:[{type:'platform',label:'Platform M29 Incidents'}]},
+      {id:'M25',name:'SLOs & SLAs for LLM Applications — Defining "Good Enough"',
+        topics:['SLO design for LLMs: quality, latency, availability, cost — all four matter','Error budgets: how much failure is acceptable before you stop shipping changes','SLA tiers: different guarantees for different use cases and customers','Measuring SLO compliance: sliding windows, burn rate alerts, monthly reporting'],
+        analogy:'A delivery service guarantees: 95% of packages within 2 days (availability + latency SLO), less than 1% damaged (quality SLO), under $5 per package (cost SLO). When they\'re hitting all SLOs, they can try new routes and truck types (ship changes). When they\'re burning through error budget, they freeze changes and fix reliability. Error budgets create a self-regulating system.',
+        labs:['Understand It: Define SLOs for the UCC pipeline — quality >95%, latency p99 <3s, availability >99.5%, cost <$0.05/extraction','Build It with AI: Implement SLO monitoring with error budget tracking and burn rate alerts for the UCC pipeline'],
+        crosslinks:[]},
+      {id:'M26',name:'Runbooks & On-Call — Responding to AI Incidents',
+        topics:['Runbook anatomy: detection → triage → containment → resolution → post-mortem','AI-specific triage: is it a model problem, a data problem, a prompt problem, or an infra problem?','Kill switches: granular controls for disabling specific features without full outage','On-call rotation: who responds to AI incidents and what skills they need'],
+        analogy:'A fire department\'s response protocols. When the alarm rings (alert), dispatch determines what\'s burning (triage): house fire (model problem), chemical spill (data problem), electrical fire (prompt problem), or structure collapse (infra). Each type has a different team, different equipment, and different procedures. Generic "spray water on it" doesn\'t work for every fire.',
+        labs:['Understand It: Write runbooks for the 3 most likely UCC pipeline incidents: hallucination storm, cost spike, and provider outage','Build It with AI: Build a triage assistant that auto-classifies UCC pipeline alerts and suggests the appropriate runbook'],
+        crosslinks:[]},
+      {id:'M27',name:'Chaos Engineering for AI — Breaking Things on Purpose',
+        topics:['Chaos experiments for LLMs: inject bad retrieval, delay API calls, corrupt prompts, spike traffic','Game days: scheduled chaos exercises with the team','Steady-state hypothesis: defining what "normal" looks like before breaking things','Chaos maturity model: from manual experiments to automated continuous chaos'],
+        analogy:'Earthquake preparedness drills. You don\'t wait for a real earthquake to test your emergency plan. You simulate one (chaos experiment), see what breaks (weaknesses), fix it (improvements), and drill again. The buildings that survive real earthquakes are the ones that practiced. The same is true for AI systems.',
+        labs:['Understand It: Design 5 chaos experiments for the UCC pipeline — define the hypothesis, injection method, and expected behavior for each','Build It with AI: Implement a chaos experiment that corrupts 10% of retrieved UCC filings — measure the pipeline\'s ability to detect and handle bad data'],
+        crosslinks:[{type:'platform',label:'Platform M07 Resilience'}]}
+    ]
+  },
+  {
+    id:'t8',color:'var(--accent-t8)',num:'Track 8',title:'Governance & Optimization',
+    desc:'The long game — optimizing costs, automating compliance, building institutional knowledge, and the capstone that operates the complete UCC pipeline in production.',
+    modules:[
+      {id:'M28',name:'Cost Optimization at Scale — Making AI Affordable in Production',
+        topics:['Cost analysis: where the money actually goes (hint: it\'s not where you think)','Optimization levers: caching, batching, compression, model tiering, prompt shortening','The optimization flywheel: measure → identify → optimize → measure again','ROI framework: proving the business value of AI investments'],
+        analogy:'Running an efficient factory. Raw material costs (token pricing) are just one factor. You also optimize energy (compute), reduce waste (unnecessary retries), buy in bulk (batching), reuse components (caching), and use cheaper materials where quality permits (model tiering). The factory that optimizes holistically outcompetes the one that just negotiates raw material prices.',
+        labs:['Understand It: Perform a cost audit of the UCC pipeline — identify the top 3 cost drivers and their optimization potential','Build It with AI: Implement 3 cost optimizations for UCC extraction (caching, batching, model tiering) and measure the combined savings'],
+        crosslinks:[{type:'platform',label:'Platform M16–M19 Cost'}]},
+      {id:'M29',name:'Compliance Automation — Making Governance Effortless',
+        topics:['Compliance-as-code: encoding regulatory requirements as automated checks','Continuous compliance: checking every request, not just periodic audits','Compliance reporting: auto-generated reports for SOC2, HIPAA, EU AI Act requirements','Governance dashboards: executive visibility into AI risk posture'],
+        analogy:'Modern car safety systems. Old cars required the driver to remember to check mirrors, maintain speed, and keep distance (manual compliance). Modern cars have lane departure warnings, adaptive cruise control, and collision avoidance (automated compliance). The driver is still responsible, but the car makes compliance easy and catches lapses automatically.',
+        labs:['Understand It: Map the UCC pipeline\'s compliance requirements against SOC2 criteria — identify automated vs manual controls','Build It with AI: Build a compliance auto-reporter that scans UCC pipeline logs and generates a weekly SOC2-ready compliance summary'],
+        crosslinks:[{type:'sdlc',label:'AI-SDLC Compliance Track'}]},
+      {id:'M30',name:'Knowledge Management — Building Institutional LLMOps Wisdom',
+        topics:['Post-mortem culture: learning from every incident without blame','Decision logs: documenting why you chose this model, this prompt, this architecture','Playbook evolution: updating runbooks and best practices from real incidents','Knowledge sharing: making LLMOps knowledge accessible beyond the on-call rotation'],
+        analogy:'A hospital\'s morbidity and mortality conferences. After every adverse event (incident), doctors gather to discuss what happened, what could have been done differently, and how to prevent recurrence (post-mortem). The learnings update protocols (runbooks), training curricula (playbooks), and institutional knowledge. Blame is excluded — learning is the only goal.',
+        labs:['Understand It: Write a post-mortem template for LLM incidents — include sections for LLM-specific root causes and prevention measures','Build It with AI: Create a searchable knowledge base of UCC pipeline decisions, incidents, and learnings using Claude-powered indexing'],
+        crosslinks:[]},
+      {id:'M31',name:'Capstone — Operating the UCC Lien Risk Pipeline in Production',
+        topics:['Full lifecycle operation: eval suite, CI/CD pipeline, monitoring dashboard, feedback loop, model management','Day-in-the-life simulation: handle a model upgrade, a quality drift incident, and a cost spike in one week','Operations report: SLO compliance, cost trends, quality metrics, improvement velocity','Handoff documentation: everything the next on-call needs to operate this system'],
+        analogy:'The final exam: run the restaurant for a week, not just cook one meal. Handle a health inspection (compliance), a supplier change (model upgrade), a customer complaint (quality incident), a rent increase (cost spike), and a busy Saturday night (traffic spike) — all while keeping the kitchen running and the customers happy.',
+        labs:['Understand It: Architect the complete UCC LLMOps system — draw every operational component and their interactions','Build It with AI: Deploy and operate the full UCC pipeline for a simulated week: eval → deploy → monitor → handle incidents → collect feedback → improve → report'],
+        crosslinks:[{type:'platform',label:'Platform M31 Capstone'},{type:'ce',label:'CE M31 Capstone'},{type:'agent',label:'Agent Capstones'}]}
+    ]
+  }
+];
+
+function renderTracks(){const c=document.getElementById('tracksContainer');c.innerHTML='';TRACKS.forEach(track=>{const el=document.createElement('div');el.className='track visible';el.dataset.track=track.id;el.style.setProperty('--track-color',track.color);let mhtml='';track.modules.forEach(mod=>{const cl=mod.crosslinks.map(x=>`<span class="crosslink ${x.type}">${x.label}</span>`).join('');const topics=mod.topics.map(t=>`<li>${t}</li>`).join('');const labs=mod.labs.map((l,i)=>`<span class="lab-tag ${i===0?'understand':'build'}">${i===0?'Understand':'Build'}</span> ${l.replace(/^(Understand It:|Build It with AI:)\s*/,'')}`).join('<br>');mhtml+=`<div class="module-card" onclick="this.classList.toggle('expanded')"><div class="module-top"><span class="module-id">${mod.id}</span><span class="module-name">${mod.name}</span><span class="module-expand">▶</span></div><div class="module-detail"><div class="detail-section"><div class="detail-label">Key Topics</div><div class="detail-content"><ul>${topics}</ul></div></div><div class="detail-section"><div class="detail-label">Everyday Analogy</div><div class="analogy-box">${mod.analogy}</div></div><div class="detail-section"><div class="detail-label">Dual-Path Labs</div><div class="detail-content">${labs}</div></div>${cl?`<div class="detail-section"><div class="detail-label">Cross-links</div><div class="detail-content">${cl}</div></div>`:''}</div></div>`;});el.innerHTML=`<div class="track-header"><span class="track-num">${track.num}</span><span class="track-title">${track.title}</span></div><p class="track-desc">${track.desc}</p>${mhtml}`;c.appendChild(el);});}
+document.getElementById('trackNav').addEventListener('click',e=>{if(e.target.tagName!=='BUTTON')return;document.querySelectorAll('.track-nav button').forEach(b=>b.classList.remove('active'));e.target.classList.add('active');const f=e.target.dataset.track;document.querySelectorAll('.track').forEach(t=>{t.classList.toggle('visible',f==='all'||t.dataset.track===f);});document.getElementById('appendix').style.display=f==='all'?'block':'none';});
+renderTracks();
+</script>
+</body>
+</html>
