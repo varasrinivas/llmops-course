@@ -47,6 +47,9 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 .stats-row { display:flex; justify-content:center; gap:36px; flex-wrap:wrap; }
 .stat-item .num { font-family:var(--font-display); font-size:32px; font-weight:700; display:block; color:#fff; }
 .stat-item .lbl { font-family:var(--font-mono); font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#8b9199; }
+.landing-hero .map-link { display:inline-flex; align-items:center; gap:6px; margin-top:24px; font-family:var(--font-mono); font-size:12px; color:#cdb98f; text-decoration:none; border:1px solid #3a3327; background:rgba(255,255,255,0.03); padding:8px 16px; border-radius:6px; transition:all .2s; }
+.landing-hero .map-link:hover { border-color:#7fb89c; color:#e9e5dc; }
+.mv-header .map-btn { margin-left:8px; text-decoration:none; }
 
 /* ── Track List ── */
 .tracks-grid { max-width:920px; margin:0 auto; padding:36px 24px 64px; width:100%; }
@@ -215,6 +218,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
       <div class="stat-item"><span class="num">64</span><span class="lbl">Labs</span></div>
       <div class="stat-item"><span class="num" id="statPct">0%</span><span class="lbl">Complete</span></div>
     </div>
+    <div><a class="map-link" href="../llmops-course-map.html">&#8862; View the course map &amp; cross-links &#8594;</a></div>
   </div>
   <div class="tracks-grid" id="tracksGrid"></div>
 </div>
@@ -223,6 +227,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 <div class="module-view" id="moduleView">
   <div class="mv-header">
     <button class="back-btn" onclick="showLanding()">&larr; All Modules</button>
+    <a class="back-btn map-btn" href="../llmops-course-map.html">&#8862; Course Map</a>
     <div class="mv-track" id="mvTrack"></div>
     <h2 id="mvTitle"></h2>
     <div class="mv-sub" id="mvSub"></div>
