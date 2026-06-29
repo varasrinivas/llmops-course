@@ -62,7 +62,7 @@ model training or prompt engineering.
 ## Repository layout
 
 ```
-llmops-kit/
+llmops-course/
 ├── course/index.html        # The single-file dark-theme course player (generated)
 ├── scripts/
 │   ├── generate_course.py   # Builds course/index.html (dark theme shell + JS engine)
