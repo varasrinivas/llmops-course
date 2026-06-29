@@ -50,7 +50,9 @@ aws s3 cp "$REDIRECT"            "${S3}/index.html"             --content-type "
 
 if [[ -n "$DISTRIBUTION_ID" ]]; then
   echo "==> Invalidating CloudFront cache for /${PREFIX}/*"
-  aws cloudfront create-invalidation \
+  # MSYS_NO_PATHCONV stops Git Bash (Windows) from rewriting the leading-slash
+  # invalidation path into a Windows file path.
+  MSYS_NO_PATHCONV=1 aws cloudfront create-invalidation \
     --distribution-id "$DISTRIBUTION_ID" \
     --paths "/${PREFIX}/*" >/dev/null
   echo "    invalidation submitted"
