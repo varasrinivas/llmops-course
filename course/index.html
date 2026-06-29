@@ -2681,6 +2681,7 @@ function showLanding() {
   document.getElementById('landing').style.display = '';
   document.getElementById('moduleView').classList.remove('active');
   buildLanding();
+  try { history.replaceState(null, '', location.pathname + location.search); } catch(e) { location.hash = ''; }
   window.scrollTo(0, 0);
 }
 function showModule(id) {
@@ -2738,6 +2739,7 @@ function showModule(id) {
   const next = idx < MODS.length - 1 ? MODS[idx+1] : null;
   html += `<div class="mv-nav"><button ${prev ? `onclick="showModule('${prev.id}')"` : 'disabled'}>← ${prev ? prev.id : ''}</button><button onclick="markComplete('${mod.id}'); this.textContent='✓ Complete'; this.style.background='rgba(76,175,130,0.16)'; this.style.borderColor='#4caf82'; this.style.color='#bfe8d2';">Mark Complete</button><button ${next ? `onclick="showModule('${next.id}')"` : 'disabled'}>${next ? next.id : ''} →</button></div>`;
   document.getElementById('mvBody').innerHTML = html;
+  try { if (location.hash.replace(/^#/,'') !== id) history.replaceState(null, '', '#' + id); } catch(e) {}
   window.scrollTo(0, 0);
 }
 function handleQuiz(qid, selected, correct) {
@@ -2774,7 +2776,15 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') showLanding();
   }
 });
+// Deep-linking: course/index.html#M14 opens that module; supports back/forward.
+function route() {
+  const id = (location.hash || '').replace(/^#/, '');
+  if (id && MODS.some(m => m.id === id)) showModule(id);
+  else showLanding();
+}
+window.addEventListener('hashchange', route);
 buildLanding();
+{ const id = (location.hash || '').replace(/^#/, ''); if (id && MODS.some(m => m.id === id)) showModule(id); }
 </script>
 </body>
 </html>
