@@ -201,7 +201,16 @@ body { background:var(--bg); color:var(--text); font-family:var(--font-body); fo
 }
 .mv-lab-card.understand .lab-tag { background:rgba(76,175,130,0.16); color:#8fd9b4; }
 .mv-lab-card.build .lab-tag { background:rgba(111,147,201,0.16); color:#9bbbe6; }
-.mv-lab-card .lab-desc { font-size:13px; color:var(--text-muted); line-height:1.6; }
+.mv-lab-card .lab-desc { font-size:13px; color:var(--text-muted); line-height:1.6; margin-bottom:12px; }
+.mv-lab-card .lab-link {
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono);
+  font-size:11px; text-decoration:none; padding:5px 10px; border-radius:4px;
+  border:1px solid var(--border); transition:all .18s;
+}
+.mv-lab-card.understand .lab-link { color:#8fd9b4; }
+.mv-lab-card.build .lab-link { color:#9bbbe6; }
+.mv-lab-card.understand .lab-link:hover { background:rgba(76,175,130,0.14); border-color:#4caf82; }
+.mv-lab-card.build .lab-link:hover { background:rgba(111,147,201,0.14); border-color:#6f93c9; }
 
 .mv-nav { display:flex; justify-content:space-between; padding-top:20px; border-top:1px solid var(--border); }
 .mv-nav button {
@@ -336,7 +345,7 @@ function showModule(id) {
   if (mod.takeaway) {
     html += `<div class="mv-takeaway"><div class="tk-label">LLMOps Takeaway</div><div class="tk-text">${mod.takeaway}</div></div>`;
   }
-  html += `<div class="mv-labs"><div class="mv-lab-card understand"><span class="lab-tag">🔍 Understand It</span><div class="lab-desc">${mod.labUnderstand || ''}</div></div><div class="mv-lab-card build"><span class="lab-tag">🔨 Build It with AI</span><div class="lab-desc">${mod.labBuild || ''}</div></div></div>`;
+  html += `<div class="mv-labs"><div class="mv-lab-card understand"><span class="lab-tag">🔍 Understand It</span><div class="lab-desc">${mod.labUnderstand || ''}</div><a class="lab-link" href="../labs/${mod.id}-lab-understand.md" target="_blank" rel="noopener">Open lab →</a></div><div class="mv-lab-card build"><span class="lab-tag">🔨 Build It with AI</span><div class="lab-desc">${mod.labBuild || ''}</div><a class="lab-link" href="../labs/${mod.id}-lab-build.md" target="_blank" rel="noopener">Open lab →</a></div></div>`;
   const idx = MODS.findIndex(m => m.id === id);
   const prev = idx > 0 ? MODS[idx-1] : null;
   const next = idx < MODS.length - 1 ? MODS[idx+1] : null;
