@@ -100,6 +100,46 @@ and the 20-point quality checklist live in `CLAUDE.md`.
 
 ---
 
+## Deploying
+
+The course is published at **agenticai.varasrinivas.com** under `courses/llmops/`.
+`scripts/deploy.sh` regenerates the course and map, writes a redirect `index.html`,
+and uploads everything to S3:
+
+```bash
+./scripts/deploy.sh
+```
+
+It deploys three objects (preserving the relative structure so cross-links resolve):
+
+```
+courses/llmops/index.html               # redirects to the map
+courses/llmops/llmops-course-map.html   # the course map
+courses/llmops/course/index.html        # the interactive player
+```
+
+The script contains **no secrets or account IDs** — AWS credentials come from your
+environment/profile (`aws configure`, `AWS_PROFILE`, or an IAM role). Everything is
+env-overridable:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BUCKET` | `agenticai.varasrinivas.com` | Target S3 bucket |
+| `PREFIX` | `courses/llmops` | Key prefix within the bucket |
+| `DISTRIBUTION_ID` | _(unset)_ | If set, invalidates CloudFront `/<prefix>/*` |
+
+```bash
+DISTRIBUTION_ID=XXXXXXXX ./scripts/deploy.sh          # also bust CloudFront cache
+BUCKET=my-bucket PREFIX=courses/llmops ./scripts/deploy.sh   # different target
+```
+
+Entry URL for learners: `https://agenticai.varasrinivas.com/courses/llmops/`
+
+> The lab "Open lab →" links point to the public GitHub repo, so labs render
+> formatted there and don't need to be deployed to S3.
+
+---
+
 ## Design system
 
 Dark theme (`#14161b` background, `#1c1f26` surfaces, `#e9e5dc` text) with eight
