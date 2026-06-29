@@ -346,7 +346,8 @@ function showModule(id) {
   if (mod.takeaway) {
     html += `<div class="mv-takeaway"><div class="tk-label">LLMOps Takeaway</div><div class="tk-text">${mod.takeaway}</div></div>`;
   }
-  html += `<div class="mv-labs"><div class="mv-lab-card understand"><span class="lab-tag">🔍 Understand It</span><div class="lab-desc">${mod.labUnderstand || ''}</div><a class="lab-link" href="../labs/${mod.id}-lab-understand.md" target="_blank" rel="noopener">Open lab →</a></div><div class="mv-lab-card build"><span class="lab-tag">🔨 Build It with AI</span><div class="lab-desc">${mod.labBuild || ''}</div><a class="lab-link" href="../labs/${mod.id}-lab-build.md" target="_blank" rel="noopener">Open lab →</a></div></div>`;
+  const LAB_BASE = "https://github.com/varasrinivas/llmops-course/blob/main/labs";
+  html += `<div class="mv-labs"><div class="mv-lab-card understand"><span class="lab-tag">🔍 Understand It</span><div class="lab-desc">${mod.labUnderstand || ''}</div><a class="lab-link" href="${LAB_BASE}/${mod.id}-lab-understand.md" target="_blank" rel="noopener">Open lab →</a></div><div class="mv-lab-card build"><span class="lab-tag">🔨 Build It with AI</span><div class="lab-desc">${mod.labBuild || ''}</div><a class="lab-link" href="${LAB_BASE}/${mod.id}-lab-build.md" target="_blank" rel="noopener">Open lab →</a></div></div>`;
   const idx = MODS.findIndex(m => m.id === id);
   const prev = idx > 0 ? MODS[idx-1] : null;
   const next = idx < MODS.length - 1 ? MODS[idx+1] : null;
