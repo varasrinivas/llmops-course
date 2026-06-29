@@ -12,7 +12,7 @@ requested CPT/HCPCS, diagnosis ICD-10, clinical notes), matches them against pay
 medical-policy criteria, and recommends **approve / deny / pend** with nurse and
 medical-director review.
 
-Part of the five-pillar curriculum published at **ai.varasrinivas.com**:
+Part of the Agentic AI five-pillar curriculum published at **agenticai.varasrinivas.com**:
 Context Engineering · Building AI Agents with Claude · AI Platform Engineering ·
 **Production LLMOps** (this course) · AI-SDLC Series.
 

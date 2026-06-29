@@ -3,7 +3,7 @@
 ## Project Identity
 This project generates the **Production LLMOps: AI Application Lifecycle** course — a 32-module program across 8 tracks, teaching ML engineers, SREs, and engineering managers how to evaluate, deploy, monitor, upgrade, and govern LLM applications in production. All modules are anchored in the **Prior Authorization (PA) Determination Pipeline** domain — a health-plan LLM application that reads incoming auth requests (member, requested CPT/HCPCS, diagnosis ICD-10, clinical notes), matches them against payer medical-policy criteria, and recommends **approve / deny / pend** with nurse and medical-director review. The course uses a **dark theme**.
 
-Published at **ai.varasrinivas.com** as part of the five-pillar curriculum:
+Published at **agenticai.varasrinivas.com** as part of the Agentic AI five-pillar curriculum:
 - **Context Engineering** → science of context design
 - **Building AI Agents with Claude** → applied practice
 - **AI Platform Engineering** → infrastructure layer
