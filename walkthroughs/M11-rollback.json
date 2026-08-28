@@ -1,0 +1,450 @@
+{
+  "id": "ops-rollback",
+  "badge": "WALKTHROUGH",
+  "color": "#EF4444",
+  "time": "~4 min",
+  "title": "Six seconds back, 806 cases still wrong",
+  "spec": "M11 · revert the bundle, then repair the state",
+  "intro": "A flag flip returns the prior-auth pipeline to the last known-good bundle in six seconds and the dashboard goes green. The 806 wrong denials v8 already issued are still sitting in members' records, and nothing on that dashboard will ever mention them.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated prior-auth rollback re-enacting M11's emergency_rollback(); timings, determination counts and rates are plausible inventions, not measurements"
+  },
+  "foot": "This walks M11's <em>Rollback With Remediation</em> — <code>last_known_good()</code>, a flag flip, <code>wait_for_metrics_recovery()</code>, and then the audit-log sweep that most rollback plans never get to.",
+  "steps": [
+    {
+      "title": "14:41:38 — the go-around",
+      "narrative": [
+        "<code>pa-bundle-v8</code> went live at 14:02:11. Thirty-nine minutes later the auto-deny guardrail is at <b>73.1%</b> against a baseline of 8.1%, and 1,240 determinations have been issued under it.",
+        "The instinct is to open the prompt and find the bad instruction. That would be a second unevaluated change shipped on top of the first, while members are still being denied. Do the go-around instead: <code>registry.last_known_good(\"pa-bundle\")</code> returns the v7 fingerprint, and <code>flags.set()</code> points production at it.",
+        "It is a config flip, not a deploy. Six seconds, no build, no image push, no restart — which is the entire reason M08 and M10 insisted on fingerprinted bundles behind a flag."
+      ],
+      "youDo": "Time your own rollback path end to end today, while nothing is on fire. If the answer contains the word 'deploy', it is not a rollback path.",
+      "claudeSays": "I did not diagnose anything. I read the registry, wrote one flag value, and emitted the alert. Diagnosis happens after the bleeding stops.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "emergency_rollback(\"auto-deny rate 73.1% vs 8.1% baseline\")"
+        },
+        {
+          "kind": "tool",
+          "text": "registry.last_known_good(\"pa-bundle\")"
+        },
+        {
+          "kind": "out",
+          "text": "pa-bundle-v7  fingerprint sha256:9f4c1ab2  promoted 2026-07-29  eval pass 0.94"
+        },
+        {
+          "kind": "tool",
+          "text": "flags.set(\"pa-bundle\", \"sha256:9f4c1ab2\")"
+        },
+        {
+          "kind": "out-pass",
+          "text": "flag propagated to 42/42 workers in 6.1s  (no redeploy)"
+        },
+        {
+          "kind": "out",
+          "text": "ALERT ROLLBACK to sha256:9f4c1ab2: auto-deny rate 73.1% vs 8.1% baseline"
+        }
+      ],
+      "state": {
+        "label": "the bundle flag",
+        "before": {
+          "title": "BEFORE — 14:41:38",
+          "view": {
+            "type": "json",
+            "data": {
+              "flag": "pa-bundle",
+              "value": "sha256:1e77d0c4",
+              "bundle": "pa-bundle-v8",
+              "live_since": "2026-08-24T14:02:11Z",
+              "determinations_served": 1240,
+              "auto_deny_rate": 0.731,
+              "baseline_auto_deny_rate": 0.081
+            },
+            "highlight": [
+              "auto_deny_rate",
+              "determinations_served"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 14:41:44",
+          "view": {
+            "type": "json",
+            "data": {
+              "flag": "pa-bundle",
+              "value": "sha256:9f4c1ab2",
+              "bundle": "pa-bundle-v7",
+              "live_since": "2026-08-24T14:41:44Z",
+              "rollback_elapsed_s": 6.1,
+              "redeploy_required": false,
+              "determinations_served": 0
+            },
+            "highlight": [
+              "rollback_elapsed_s",
+              "redeploy_required"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "14:48 — the metrics recover, and that is the trap",
+      "narrative": [
+        "<code>wait_for_metrics_recovery(timeout=\"10m\")</code> watches the auto-deny rate settle. Seven minutes after the flip it reads 8.4%, inside the baseline band, and the function returns clean.",
+        "Every dashboard in the building is now green. Mean-time-to-recovery is 6.1 seconds if you measure the flag, eleven minutes if you measure the metric — either number will look excellent in the incident review.",
+        "None of that touched what v8 <em>did</em>. The 1,240 determinations it issued are still in members' records, still driving appeals, still delaying care. The graph recovered because the graph only plots new traffic."
+      ],
+      "claudeSays": "The recovery check confirms the pipeline is healthy going forward. It says nothing about the 39 minutes behind it, and it is not designed to.",
+      "youDo": "Look at your own recovery criteria. If every one of them is a forward-looking rate, your rollback declares victory while the damage is still on the books.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "wait_for_metrics_recovery(timeout=\"10m\")"
+        },
+        {
+          "kind": "out",
+          "text": "14:43  auto_deny_rate 0.402  (draining v8 traffic)\n14:45  auto_deny_rate 0.147\n14:48  auto_deny_rate 0.084"
+        },
+        {
+          "kind": "out-pass",
+          "text": "recovered in 6m52s  auto_deny_rate 0.084 within baseline band 0.081 +/- 0.02"
+        },
+        {
+          "kind": "gate",
+          "text": "STOP — this is where half of all rollback runbooks end"
+        }
+      ],
+      "state": {
+        "label": "recovery, forward-looking only",
+        "before": {
+          "title": "AUTO-DENY RATE, NEW TRAFFIC",
+          "view": {
+            "type": "bars",
+            "unit": "auto-deny rate %",
+            "max": 75,
+            "items": [
+              {
+                "label": "baseline (v7)",
+                "value": 8.1,
+                "tone": "win",
+                "note": "where it was before 14:02"
+              },
+              {
+                "label": "under v8",
+                "value": 73.1,
+                "tone": "bad",
+                "note": "39 minutes, 1,240 determinations"
+              },
+              {
+                "label": "after rollback",
+                "value": 8.4,
+                "tone": "win",
+                "note": "recovered at 14:48 — for requests arriving from now on"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT THE GRAPH DOES NOT PLOT",
+          "view": {
+            "type": "note",
+            "text": "1,240 determinations issued under <code>pa-bundle-v8</code>, still live in members' records. The auto-deny rate is a rate over <em>incoming</em> requests. Rolling back the code rolled back the rate; it did not roll back a single denial."
+          }
+        }
+      }
+    },
+    {
+      "title": "Walk the audit log and re-adjudicate",
+      "narrative": [
+        "The second half of <code>emergency_rollback</code> is the half that gets cut for time. It queries the audit log for every determination tagged with the bad bundle since release, then re-runs each one through <code>determine()</code> pinned to the known-good fingerprint.",
+        "1,240 requests go back through. <b>806 come out with a different decision</b> — all of them denials under v8 that v7 approves. The remaining 434 are unchanged, including roughly a hundred that were correctly denied either way.",
+        "This is a batch job, not a manual review. It costs about a cent a determination and finishes in under nine minutes. The reason teams skip it is never the cost; it is that nobody wrote the second phase into the runbook."
+      ],
+      "youDo": "Check that your audit log records the bundle fingerprint on every determination. Without that field this query cannot be written at all, and the remediation phase is impossible rather than merely skipped.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "bad = audit_log.determinations(bundle=\"pa-bundle-v8\", since=v8_release_time)"
+        },
+        {
+          "kind": "out",
+          "text": "1240 determinations  14:02:11 -> 14:41:44"
+        },
+        {
+          "kind": "tool",
+          "text": "for d in bad:\n    redo = determine(d.request, bundle=\"sha256:9f4c1ab2\")"
+        },
+        {
+          "kind": "out",
+          "text": "re-adjudicated 1240/1240  elapsed 8m41s  cost $13.64"
+        },
+        {
+          "kind": "out-fail",
+          "text": "806 determinations changed decision  (deny -> approve)"
+        },
+        {
+          "kind": "out",
+          "text": "434 determinations unchanged"
+        }
+      ],
+      "state": {
+        "label": "1,240 re-adjudicated · 806 changed",
+        "before": {
+          "title": "WHAT v8 ISSUED",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "request",
+              "service",
+              "v8 decision",
+              "issued"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>PA-2026-114882</code>",
+                  "MRI lumbar spine w/o contrast",
+                  "DENY",
+                  "14:07:19"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-114903</code>",
+                  "PT 2x/wk x 6 wks, post-TKA",
+                  "DENY",
+                  "14:11:02"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-115044</code>",
+                  "CPAP titration study",
+                  "DENY",
+                  "14:19:37"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-115210</code>",
+                  "Repeat CT abdomen, 11 days",
+                  "DENY",
+                  "14:28:50"
+                ]
+              },
+              {
+                "cells": [
+                  "&hellip; 1,236 more",
+                  "&mdash;",
+                  "906 DENY / 334 APPROVE",
+                  "39 minutes"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT v7 SAYS ABOUT THE SAME REQUESTS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "request",
+              "v8 decision",
+              "re-adjudicated on v7",
+              "changed?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>PA-2026-114882</code>",
+                  "DENY",
+                  "APPROVE",
+                  "yes &mdash; reopen"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-114903</code>",
+                  "DENY",
+                  "APPROVE",
+                  "yes &mdash; reopen"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-115044</code>",
+                  "DENY",
+                  "APPROVE",
+                  "yes &mdash; reopen"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>PA-2026-115210</code>",
+                  "DENY",
+                  "DENY",
+                  "no &mdash; correctly denied"
+                ]
+              },
+              {
+                "cells": [
+                  "totals",
+                  "1,240",
+                  "806 differ / 434 identical",
+                  "806 cases to reopen"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Reopen, notify, and the half a plan",
+      "narrative": [
+        "<code>reopen_case(d, corrected=redo, notify=True)</code> runs 806 times. Each one reverses the denial in the member record, writes the corrected determination with its v7 fingerprint, and fires the downstream notifications — member letter, provider portal, and the appeals queue.",
+        "The sweep also finds what the 39 minutes had already set in motion: <b>38 of the 806 had opened an appeal</b>, and <b>11 denial letters had already been mailed</b>. Those cannot be un-sent, so they escalate to the medical director and to compliance rather than closing silently.",
+        "That is the whole lesson of this module in one number. The code rollback took 6.1 seconds. The state recovery took 9 minutes of compute and a phone call to compliance — and if the runbook had stopped at 'metrics recovered', all 806 would have stayed wrong, surfacing months later as overturned appeals and a regulatory finding with a paper trail pointing straight at you."
+      ],
+      "claudeSays": "Two artifacts came out of this: a reverted flag and a remediation report. A rollback that produces only the first one is half a rollback.",
+      "youDo": "Open your own rollback runbook and count the steps after 'verify recovery'. If there are none, add the audit-log sweep now — writing it during an incident is how the 806 get missed.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "reopen_case(d, corrected=redo, notify=True)   # x806"
+        },
+        {
+          "kind": "out-pass",
+          "text": "806 cases reopened  806 corrected determinations written  806 member notifications queued"
+        },
+        {
+          "kind": "out-fail",
+          "text": "38 cases already had an open appeal -> flagged for medical_director"
+        },
+        {
+          "kind": "out-fail",
+          "text": "11 denial letters already mailed -> escalated to compliance"
+        },
+        {
+          "kind": "out",
+          "text": "{'rolled_back_to': 'sha256:9f4c1ab2', 'reexamined': 1240}"
+        }
+      ],
+      "state": {
+        "label": "the two halves of recovery",
+        "before": {
+          "title": "PHASE ONE — THE CODE",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "action",
+              "elapsed",
+              "result"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>last_known_good()</code>",
+                  "0.3s",
+                  "v7 · <code>sha256:9f4c1ab2</code>"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>flags.set()</code>",
+                  "6.1s",
+                  "42/42 workers, no redeploy"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>wait_for_metrics_recovery()</code>",
+                  "6m52s",
+                  "auto-deny 0.084, in band"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "harm still on the books",
+                  "&mdash;",
+                  "806 wrong denials, untouched"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "PHASE TWO — THE STATE",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "action",
+                  "elapsed",
+                  "result"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>audit_log.determinations()</code>",
+                      "1.4s",
+                      "1,240 tagged <code>pa-bundle-v8</code>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "re-adjudicate on v7",
+                      "8m41s",
+                      "806 changed · $13.64"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "<code>reopen_case(notify=True)</code>",
+                      "2m10s",
+                      "806 reopened and notified"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "cannot be undone",
+                      "&mdash;",
+                      "38 open appeals · 11 letters mailed"
+                    ],
+                    "tone": "bad"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "Mean-time-to-recovery bounds how many bad determinations get <em>made</em>. Only the remediation phase bounds how many stay made. Write both halves into the runbook, tag every determination with its bundle fingerprint so phase two is queryable, and rehearse the sweep — because the version of this incident where nobody runs it looks identical on every dashboard you own."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

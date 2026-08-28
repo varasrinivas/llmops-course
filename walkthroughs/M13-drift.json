@@ -1,0 +1,445 @@
+{
+  "id": "ops-drift",
+  "badge": "WALKTHROUGH",
+  "color": "#991B1B",
+  "time": "~4 min",
+  "title": "Three windows of saying nothing",
+  "spec": "M13 · corroboration, sustain, and the alert that does not fire",
+  "intro": "A drift signal crosses its threshold in window 41 and the detector stays silent. A second signal joins it and it stays silent again. The alert only fires in window 44 — and the three silences are the part of this detector that is hard to build and impossible to draw as a static example.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated four-window drift trace over prior-auth traffic, run against M13's check_drift(); PSI, embedding-shift, override and judge readings are plausible inventions, not measurements"
+  },
+  "foot": "This walks M13's <em>A Label-Free Drift Detector</em> — four signals, the <code>len(firing) &gt;= 2</code> corroboration rule, and <code>sustained(firing, n=3)</code>.",
+  "steps": [
+    {
+      "title": "Window 41 — one signal fires, nothing happens",
+      "narrative": [
+        "The detector runs on six-hour windows of prior-auth traffic, roughly 30,000 determinations each. In window 41, <code>PSI(baseline.features, window.features)</code> comes back at <b>0.19</b> against a 0.15 threshold. Input drift, unambiguously: the shape of incoming requests has moved.",
+        "<code>firing</code> has one element in it. The rule is <code>len(firing) &gt;= 2 and sustained(firing, n=3)</code>, so <code>alert_drift()</code> is not called and nobody is paged.",
+        "This is the correct behaviour and it is the hardest behaviour to hold onto, because a single PSI breach looks exactly like the beginning of a real problem. It is also what a Monday volume bump, a holiday mix shift, and one large provider group submitting a batch all look like. Firing here is how drift alerts get muted."
+      ],
+      "youDo": "Pull your last quarter of drift alerts and count how many were single-signal. That share is the fraction of pages your team learned to ignore.",
+      "claudeSays": "One threshold crossed. The rule requires two, so the function returned the signal dictionary and did nothing else. Silence here is a decision, not an oversight.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "check_drift(window_41)   # 2026-08-19 00:00-06:00, n=29,840"
+        },
+        {
+          "kind": "out",
+          "text": "input_psi   0.19   threshold 0.15   FIRING\nemb_shift   0.11   threshold 0.25   ok\noverride    0.064  threshold 0.082  ok\njudge_drop  4.29   threshold 4.16   ok"
+        },
+        {
+          "kind": "out",
+          "text": "firing = ['input_psi']   len=1   sustained_run=0"
+        },
+        {
+          "kind": "out-pass",
+          "text": "no alert  (rule: len(firing) >= 2 and sustained(firing, n=3))"
+        }
+      ],
+      "state": {
+        "label": "window 41 · 1 signal",
+        "before": {
+          "title": "THE FOUR SIGNALS",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "signal",
+              "threshold",
+              "window 41",
+              "state"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>input_psi</code>",
+                  "&gt; 0.15",
+                  "0.19",
+                  "FIRING"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>emb_shift</code>",
+                  "&gt; 0.25",
+                  "0.11",
+                  "quiet"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>override</code>",
+                  "&gt; 0.082",
+                  "0.064",
+                  "quiet &mdash; baseline 0.062"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>judge_drop</code>",
+                  "&lt; 4.16",
+                  "4.29",
+                  "quiet &mdash; baseline 4.31"
+                ]
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "WHAT THE DETECTOR DID",
+          "view": {
+            "type": "json",
+            "data": {
+              "window": 41,
+              "firing": [
+                "input_psi"
+              ],
+              "corroboration_required": 2,
+              "corroboration_met": false,
+              "sustained_run": 0,
+              "sustained_required": 3,
+              "alert_drift_called": false
+            },
+            "highlight": [
+              "corroboration_met",
+              "alert_drift_called"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Windows 42 and 43 — two signals, still silent",
+      "narrative": [
+        "In window 42 the PSI climbs to 0.22 and <code>EmbeddingShift</code> joins it at <b>0.27</b>, over its 0.25 threshold. Two signals now corroborate: the incoming request features moved <em>and</em> the embeddings of the clinical notes moved with them. That is a much stronger claim than either alone.",
+        "<code>len(firing) &gt;= 2</code> is satisfied. <code>sustained(firing, n=3)</code> is not — this is one window, and the rule wants three consecutive. Silence again.",
+        "Window 43 makes it two: PSI 0.24, embedding shift 0.30, and the override rate starting to lean at 0.078 without yet crossing 0.082. Still silent, and by now the temptation to lower <code>n</code> is real. Hold it. Two windows is twelve hours, and twelve hours of movement is still inside the range that a single large provider onboarding produces and then stops producing."
+      ],
+      "claudeSays": "Corroboration and sustain are two different guards. The first says several independent measurements agree; the second says the agreement survived time. A detector with only the first pages on every correlated blip.",
+      "youDo": "Set <code>n</code> from your window length and your tolerable detection lag, not from taste. Six-hour windows with <code>n=3</code> means you accept an eighteen-hour lag in exchange for silence on anything shorter.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "check_drift(window_42)   # 06:00-12:00, n=30,110"
+        },
+        {
+          "kind": "out",
+          "text": "input_psi   0.22   FIRING\nemb_shift   0.27   FIRING\noverride    0.069  ok\njudge_drop  4.27   ok"
+        },
+        {
+          "kind": "out",
+          "text": "firing = ['input_psi','emb_shift']   len=2   sustained_run=1  -> no alert"
+        },
+        {
+          "kind": "prompt",
+          "text": "check_drift(window_43)   # 12:00-18:00, n=31,205"
+        },
+        {
+          "kind": "out",
+          "text": "input_psi   0.24   FIRING\nemb_shift   0.30   FIRING\noverride    0.078  ok  (leaning)\njudge_drop  4.22   ok  (leaning)"
+        },
+        {
+          "kind": "out-pass",
+          "text": "firing len=2   sustained_run=2   -> still no alert, 2 of 3 windows"
+        }
+      ],
+      "state": {
+        "label": "windows 42-43 · 2 signals, run 1 then 2",
+        "before": {
+          "title": "BEFORE — window 41",
+          "view": {
+            "type": "json",
+            "data": {
+              "window": 41,
+              "firing": [
+                "input_psi"
+              ],
+              "sustained_run": 0,
+              "alert_drift_called": false
+            }
+          }
+        },
+        "after": {
+          "title": "AFTER — window 43, the run is building",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "window",
+              "firing signals",
+              "len",
+              "run",
+              "alert?"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "41",
+                  "<code>input_psi</code>",
+                  "1",
+                  "0",
+                  "no &mdash; corroboration fails"
+                ]
+              },
+              {
+                "cells": [
+                  "42",
+                  "<code>input_psi</code>, <code>emb_shift</code>",
+                  "2",
+                  "1",
+                  "no &mdash; sustain fails"
+                ],
+                "new": true
+              },
+              {
+                "cells": [
+                  "43",
+                  "<code>input_psi</code>, <code>emb_shift</code>",
+                  "2",
+                  "2",
+                  "no &mdash; sustain fails"
+                ],
+                "new": true
+              },
+              {
+                "cells": [
+                  "44",
+                  "&mdash;",
+                  "&mdash;",
+                  "&mdash;",
+                  "not yet run"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Window 44 — the run closes and the alert fires",
+      "narrative": [
+        "Third consecutive window. PSI 0.26, embedding shift 0.33 — and now the proxy-quality signals cross too. Reviewer override is at <b>0.091</b> against a 0.082 threshold, and the live judge score has fallen to <b>4.13</b>, under 4.16.",
+        "That is four of four firing, on the third consecutive window. <code>len(firing) &gt;= 2</code> and <code>sustained(firing, n=3)</code> are both true, and <code>alert_drift(firing, signals)</code> runs.",
+        "The order the signals arrived in is the diagnosis. Inputs moved first, then the note embeddings, then extraction quality, then the judge — that is input drift propagating into output quality, not a model swap and not a policy change. The alert ships with the story attached: a new provider group onboarded on the 19th, submitting 2,100 notes a day in a template the bundle's few-shot examples have never seen."
+      ],
+      "claudeSays": "Four signals firing, three windows running, one page. The detector waited eighteen hours to say something it can defend.",
+      "youDo": "Make your alert carry <code>firing</code> and the full <code>signals</code> dict, not just a boolean. Which signals moved and in what order is most of the root cause, and it is free.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "check_drift(window_44)   # 18:00-24:00, n=30,660"
+        },
+        {
+          "kind": "out-fail",
+          "text": "input_psi   0.26   threshold 0.15   FIRING\nemb_shift   0.33   threshold 0.25   FIRING\noverride    0.091  threshold 0.082  FIRING\njudge_drop  4.13   threshold 4.16   FIRING"
+        },
+        {
+          "kind": "out",
+          "text": "firing len=4   sustained_run=3   -> rule satisfied"
+        },
+        {
+          "kind": "gate",
+          "text": "alert_drift(['input_psi','emb_shift','override','judge_drop'], signals)"
+        },
+        {
+          "kind": "tool",
+          "text": "drift explain --window 44 --group-by submitter"
+        },
+        {
+          "kind": "out",
+          "text": "PSI contribution: 71% from submitter_group=NORTHSHORE_ORTHO (onboarded 08-19)\n  2,100 notes/day, template 'NSO-PA-2026', not represented in bundle few-shots"
+        }
+      ],
+      "state": {
+        "label": "window 44 · 4 signals, run 3",
+        "before": {
+          "title": "BEFORE — window 43, two signals, run 2",
+          "view": {
+            "type": "json",
+            "data": {
+              "window": 43,
+              "firing": [
+                "input_psi",
+                "emb_shift"
+              ],
+              "corroboration_met": true,
+              "sustained_run": 2,
+              "sustained_required": 3,
+              "alert_drift_called": false
+            },
+            "highlight": [
+              "sustained_run"
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — window 44, the rule is satisfied",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "json",
+                "data": {
+                  "window": 44,
+                  "firing": [
+                    "input_psi",
+                    "emb_shift",
+                    "override",
+                    "judge_drop"
+                  ],
+                  "corroboration_met": true,
+                  "sustained_run": 3,
+                  "sustained_required": 3,
+                  "alert_drift_called": true,
+                  "drift_type": "input drift -> quality degradation",
+                  "attributed_to": "submitter_group=NORTHSHORE_ORTHO"
+                },
+                "highlight": [
+                  "alert_drift_called",
+                  "drift_type"
+                ]
+              },
+              {
+                "type": "rows",
+                "columns": [
+                  "signal",
+                  "w41",
+                  "w42",
+                  "w43",
+                  "w44"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "<code>input_psi</code> (&gt;0.15)",
+                      "0.19",
+                      "0.22",
+                      "0.24",
+                      "0.26"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "<code>emb_shift</code> (&gt;0.25)",
+                      "0.11",
+                      "0.27",
+                      "0.30",
+                      "0.33"
+                    ],
+                    "tone": "bad"
+                  },
+                  {
+                    "cells": [
+                      "<code>override</code> (&gt;0.082)",
+                      "0.064",
+                      "0.069",
+                      "0.078",
+                      "0.091"
+                    ],
+                    "tone": "bad",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "<code>judge_drop</code> (&lt;4.16)",
+                      "4.29",
+                      "4.27",
+                      "4.22",
+                      "4.13"
+                    ],
+                    "tone": "bad",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "alert fired?",
+                      "no",
+                      "no",
+                      "no",
+                      "YES"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "What the three silences bought",
+      "narrative": [
+        "Eighteen hours from first signal to page. That sounds slow until you price the alternative: the nurse-confirmed labels that would <em>prove</em> this drift arrive nineteen days later, through the appeals pipeline, by which time roughly 2.3 million determinations have gone through the drifted bundle.",
+        "Now price the other alternative. Set the rule to fire on any single signal and re-run the quarter: it would have paged <b>14 times</b>, and 13 of those are Monday volume bumps, a holiday mix shift, and two batch re-deliveries. The fourteenth is this one. A detector with a 7% precision gets muted by the third week, and then it catches nothing at all.",
+        "The corroboration-and-sustain rule is not a compromise between sensitivity and noise. It is the thing that keeps the detector installed — and an alert nobody has muted is the only kind that detects anything."
+      ],
+      "claudeSays": "The interesting output of this detector across four windows was three non-alerts. Nothing in a static screenshot of window 44 tells you that the restraint was there.",
+      "youDo": "Replay your own drift rule against last quarter and count the pages it would have produced. If it is more than about one a month, your team will mute it before it is ever right.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "drift replay --quarter 2026Q3 --rule any_single_signal"
+        },
+        {
+          "kind": "out-fail",
+          "text": "14 alerts  13 false (8 volume bumps, 3 holiday mix, 2 batch re-delivery)  1 true\nprecision 7.1%"
+        },
+        {
+          "kind": "prompt",
+          "text": "drift replay --quarter 2026Q3 --rule corroborate2_sustain3"
+        },
+        {
+          "kind": "out-pass",
+          "text": "1 alert  0 false  1 true  precision 100%  detection lag 18h"
+        },
+        {
+          "kind": "out",
+          "text": "reference: label-confirmed detection would have landed 2026-09-07, 19 days later\n           ~2.3M determinations served on the drifted bundle in the interval"
+        }
+      ],
+      "state": {
+        "label": "three detection strategies, one quarter",
+        "before": {
+          "title": "DETECTION LAG",
+          "view": {
+            "type": "bars",
+            "unit": "hours to detection",
+            "max": 456,
+            "items": [
+              {
+                "label": "any single signal",
+                "value": 0,
+                "tone": "bad",
+                "note": "fires instantly, and 13 of 14 times it is wrong &mdash; muted by week 3"
+              },
+              {
+                "label": "corroborate 2 + sustain 3",
+                "value": 18,
+                "tone": "win",
+                "note": "1 alert, 0 false positives, still installed"
+              },
+              {
+                "label": "wait for nurse labels",
+                "value": 456,
+                "tone": "bad",
+                "note": "19 days · ~2.3M determinations already served"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "A drift detector is judged on the alerts it <em>declines</em> to send. Require several independent signals to agree, require the agreement to survive N windows, and ship the <code>firing</code> list with the page so the responder gets the drift type for free. Labels are the ground truth and they are also three weeks late &mdash; label-free corroboration is what turns that into eighteen hours."
+          }
+        }
+      }
+    }
+  ]
+}

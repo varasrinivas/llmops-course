@@ -1,0 +1,447 @@
+{
+  "id": "ops-runbook",
+  "badge": "WALKTHROUGH",
+  "color": "#DC2626",
+  "time": "~4 min",
+  "title": "02:14 — the checklist, not the scramble",
+  "spec": "M26 · detect, decide, act, verify, remediate, communicate",
+  "intro": "The auto-deny alert fires at 02:14. <code>RUNBOOK_auto_deny_spike</code> is six ordered steps and an escalation ladder, and following it puts the pipeline back in band eleven minutes later. The same incident without a runbook took three hours and forty minutes last quarter.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated 2am prior-auth incident executed against M26's RUNBOOK_auto_deny_spike; timestamps, rates and counts are plausible inventions, not measurements"
+  },
+  "foot": "This walks M26's <em>A Runbook as Executable Checklist</em> — the six <code>Step()</code> entries of <code>RUNBOOK_auto_deny_spike</code> and its <code>escalation</code> list, in the order they actually run.",
+  "steps": [
+    {
+      "title": "Detect and decide — 02:14 to 02:18",
+      "narrative": [
+        "The page reads <code>alert:auto_deny_rate &gt; baseline + 0.05</code>. Actual is 0.214 against a baseline of 0.081, so it is +0.133 — nearly three times the alert threshold. The on-call engineer has been awake for ninety seconds.",
+        "Step one is <b>detect</b>, and its content is a single instruction: <em>confirm the spike on <code>dashboards/pa</code>, not a data artifact.</em> Three minutes go into checking that request volume is normal, that no upstream feed re-delivered a batch, and that the metric is not a broken rollup. It is real.",
+        "Step two is <b>decide</b>, and the runbook decides for you: <code>if sustained &gt;10m -&gt; rollback; else investigate</code>. The rate has been above the line since 02:04, so that is ten minutes and the branch is settled. Severity is <code>SEV1</code>, which auto-pages the senior engineer. Nobody at 2am is being asked to weigh anything."
+      ],
+      "youDo": "Open your own top alert and read what it tells the responder to do next. If the answer is 'look at the dashboard', you have a detector, not a runbook.",
+      "claudeSays": "The decide step is a rule with a threshold and a clock, not a judgement call. That is deliberate: the responder is tired, and the rule is not.",
+      "terminal": [
+        {
+          "kind": "out-fail",
+          "text": "02:14:07  PAGE  SEV1  auto_deny_rate 0.214 > baseline 0.081 + 0.05   -> oncall_eng"
+        },
+        {
+          "kind": "prompt",
+          "text": "runbook show auto_deny_spike"
+        },
+        {
+          "kind": "out",
+          "text": "step 1 detect     confirm spike on dashboards/pa, not a data artifact\nstep 2 decide     if sustained >10m -> rollback; else investigate\nstep 3 act        emergency_rollback(\"auto-deny spike\")\nstep 4 verify     auto_deny_rate back to baseline within 10m\nstep 5 remediate  reexamine_since(incident_start)\nstep 6 communicate medical_director, compliance, status_page"
+        },
+        {
+          "kind": "tool",
+          "text": "dashboards/pa --window 30m --check volume,feed,rollup"
+        },
+        {
+          "kind": "out",
+          "text": "02:17:22  volume 5,020/hr (normal)  no batch re-delivery  rollup healthy  -> spike is real"
+        },
+        {
+          "kind": "gate",
+          "text": "02:18:05  sustained since 02:04 = 14m > 10m  -> branch: ROLLBACK. senior_eng paged (SEV1)"
+        }
+      ],
+      "state": {
+        "label": "steps 1-2 · detect, decide",
+        "before": {
+          "title": "THE SIGNAL",
+          "view": {
+            "type": "json",
+            "data": {
+              "alert": "auto_deny_spike",
+              "severity": "SEV1",
+              "auto_deny_rate": 0.214,
+              "baseline": 0.081,
+              "threshold": "baseline + 0.05",
+              "above_line_since": "02:04",
+              "paged": "oncall_eng"
+            },
+            "highlight": [
+              "auto_deny_rate",
+              "above_line_since"
+            ]
+          }
+        },
+        "after": {
+          "title": "THE DECISION, MADE BY THE RULE",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "check",
+              "reading",
+              "verdict"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "request volume normal?",
+                  "5,020/hr vs 4,980 typical",
+                  "yes &mdash; not a volume artifact"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "upstream batch re-delivered?",
+                  "no duplicate feed IDs",
+                  "no &mdash; not a data artifact"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "metric rollup healthy?",
+                  "all 42 workers reporting",
+                  "yes &mdash; the number is true"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "sustained &gt; 10m?",
+                  "14 minutes above the line",
+                  "ROLLBACK branch"
+                ],
+                "tone": "bad",
+                "new": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Act — 02:19, one command",
+      "narrative": [
+        "Step three is <code>emergency_rollback(\"auto-deny spike\")</code>. It is the M11 procedure, already written, already rehearsed, and reachable from the runbook as a callable — not as a paragraph describing what to do.",
+        "That distinction is the module in miniature. A prose runbook says <em>revert to the last known-good bundle</em>, and at 2am the responder then has to remember which registry, which flag name, and whether the flag is per-region. An executable step calls the function that knows all three.",
+        "Flag flip to the v7 fingerprint: 6.1 seconds across 42 workers. No build, no deploy, no restart."
+      ],
+      "claudeSays": "The runbook did not describe the rollback. It invoked it. The description would have been the lossy copy.",
+      "youDo": "Take the longest prose step in your own runbook and replace it with a function call. The step should say <em>what</em> and <em>why</em>; the code should hold the <em>how</em>, because the how goes stale silently.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "runbook run auto_deny_spike --from step:act"
+        },
+        {
+          "kind": "tool",
+          "text": "Step(\"act\", run=lambda: emergency_rollback(\"auto-deny spike\"))"
+        },
+        {
+          "kind": "out",
+          "text": "02:19:02  registry.last_known_good(\"pa-bundle\") -> sha256:9f4c1ab2 (v7)"
+        },
+        {
+          "kind": "out",
+          "text": "02:19:08  flags.set(\"pa-bundle\", \"sha256:9f4c1ab2\")  42/42 workers  6.1s"
+        },
+        {
+          "kind": "out-pass",
+          "text": "act COMPLETE  elapsed since page: 5m01s"
+        }
+      ],
+      "state": {
+        "label": "step 3 · act",
+        "before": {
+          "title": "BEFORE — the prose version of this step",
+          "view": {
+            "type": "note",
+            "text": "&quot;If the auto-deny rate is elevated, revert the prompt bundle to the previous known-good version using the feature flag system, then confirm the change has propagated.&quot; &mdash; correct, unrunnable, and it does not name the registry, the flag, or the fingerprint. Last quarter it also named a flag that had since been renamed."
+          }
+        },
+        "after": {
+          "title": "AFTER — the executable version",
+          "view": {
+            "type": "json",
+            "data": {
+              "step": "act",
+              "run": "emergency_rollback('auto-deny spike')",
+              "resolved_bundle": "pa-bundle-v7",
+              "fingerprint": "sha256:9f4c1ab2",
+              "workers_updated": "42/42",
+              "elapsed_s": 6.1,
+              "redeploy_required": false
+            },
+            "highlight": [
+              "run",
+              "elapsed_s"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Verify and remediate — 02:25 to 02:31",
+      "narrative": [
+        "Step four names the metric that has to move: <em>auto_deny_rate back to baseline within 10m</em>. At 02:25 it reads 0.084, inside the band. If it had not, the runbook would have escalated rather than declaring victory — a verify step with no failure branch is decoration.",
+        "Step five is the one that makes this a real runbook: <code>reexamine_since(incident_start)</code>. The bad bundle went live at 02:04 and was reverted at 02:19, fifteen minutes at 5,000 determinations an hour — <b>1,250 determinations</b> to re-adjudicate on v7.",
+        "<b>166 of them come back with a different decision.</b> That is the excess deny rate of 13.3 points applied to 1,250, and it matches: those are members who were denied by a bundle that no longer exists. They get reopened and notified."
+      ],
+      "claudeSays": "Verify closes the incident for future traffic. Remediate closes it for the traffic that already went through. The runbook has both because a rollback without the second one leaves 166 wrong denials behind.",
+      "youDo": "Count the steps in your runbook that run after the metric recovers. Zero is the common answer and it is the expensive one.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "Step(\"verify\", check=\"auto_deny_rate back to baseline within 10m\")"
+        },
+        {
+          "kind": "out",
+          "text": "02:21  auto_deny_rate 0.151  (draining)\n02:23  auto_deny_rate 0.097\n02:25  auto_deny_rate 0.084"
+        },
+        {
+          "kind": "out-pass",
+          "text": "verify PASS  0.084 within baseline band  recovered 6m12s after act"
+        },
+        {
+          "kind": "tool",
+          "text": "Step(\"remediate\", run=lambda: reexamine_since(incident_start))"
+        },
+        {
+          "kind": "out",
+          "text": "02:26  re-adjudicating 1,250 determinations issued 02:04 -> 02:19 on sha256:9f4c1ab2"
+        },
+        {
+          "kind": "out-fail",
+          "text": "02:31  166 determinations changed decision (deny -> approve) -> reopened and notified"
+        }
+      ],
+      "state": {
+        "label": "steps 4-5 · verify, remediate",
+        "before": {
+          "title": "VERIFY — the forward-looking metric",
+          "view": {
+            "type": "bars",
+            "unit": "auto-deny rate %",
+            "max": 22,
+            "items": [
+              {
+                "label": "baseline",
+                "value": 8.1,
+                "tone": "win",
+                "note": "where it should sit"
+              },
+              {
+                "label": "at the page (02:14)",
+                "value": 21.4,
+                "tone": "bad",
+                "note": "+13.3 points"
+              },
+              {
+                "label": "after act (02:25)",
+                "value": 8.4,
+                "tone": "win",
+                "note": "in band, 6m12s after the flag flip"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "REMEDIATE — the backward-looking sweep",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "quantity",
+              "value",
+              "how it is derived"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "bad bundle live",
+                  "02:04 &rarr; 02:19 (15 min)",
+                  "from the alert's <code>above_line_since</code>"
+                ]
+              },
+              {
+                "cells": [
+                  "determinations issued",
+                  "1,250",
+                  "15 min at 5,000/hr"
+                ]
+              },
+              {
+                "cells": [
+                  "excess deny rate",
+                  "+13.3 points",
+                  "0.214 &minus; 0.081"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "decisions changed on v7",
+                  "166",
+                  "0.133 &times; 1,250 &mdash; reopened, members notified"
+                ],
+                "tone": "bad",
+                "new": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Communicate, and the ladder that made it eleven minutes",
+      "narrative": [
+        "Step six notifies <code>medical_director</code>, <code>compliance</code>, and the status page — in that order, with the 166 reopened cases attached. Clinical impact means the medical director is not a courtesy copy; they are the person who decides whether the reopened determinations need individual review.",
+        "The escalation ladder ran alongside all of it: <code>oncall_eng</code> at 02:14, <code>senior_eng</code> automatically at 02:18 when the severity resolved to SEV1, <code>medical_director</code> at 02:31 when clinical impact was quantified. Nobody had to decide who to wake up, which is exactly the decision people get wrong at 2am.",
+        "Total time from page to in-band: <b>eleven minutes</b>. The same failure mode last quarter, before this runbook existed, ran three hours and forty minutes — most of it spent finding the flag name and arguing about whether to roll forward instead. The runbook did not make anyone smarter. It removed the four decisions that a tired person makes badly."
+      ],
+      "claudeSays": "Six steps executed in order, each one either a check with a branch or a call with a result. The prose version of this document could not have been executed at all — only interpreted.",
+      "youDo": "After your next incident, diff what the responder actually did against what the runbook said. Every gap is a step that was improvised, and improvised steps are where the minutes go.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "Step(\"communicate\", notify=[\"medical_director\",\"compliance\",\"status_page\"])"
+        },
+        {
+          "kind": "out",
+          "text": "02:31  medical_director  SEV1 auto-deny spike, 166 determinations reopened, v7 restored\n02:31  compliance       166 reversed denials, 0 letters mailed within window\n02:32  status_page      \"Prior-auth determinations delayed 02:04-02:19. Resolved.\""
+        },
+        {
+          "kind": "out-pass",
+          "text": "runbook auto_deny_spike COMPLETE  6/6 steps  page -> in-band 11m00s"
+        },
+        {
+          "kind": "out",
+          "text": "postmortem action -> M30: add the v8 deny-recall case to the launch eval set"
+        }
+      ],
+      "state": {
+        "label": "the ladder and the clock",
+        "before": {
+          "title": "LAST QUARTER — no runbook",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "what happened",
+              "elapsed",
+              "why"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "page &rarr; confirmed real",
+                  "0:00 &rarr; 0:38",
+                  "no detect step; checked six dashboards"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "argued rollback vs hotfix",
+                  "0:38 &rarr; 1:52",
+                  "no decide rule; the hotfix was tried first"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "found the flag name",
+                  "1:52 &rarr; 2:31",
+                  "the wiki page named a flag renamed in June"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "reverted, verified",
+                  "2:31 &rarr; 3:40",
+                  "&mdash;"
+                ],
+                "tone": "bad"
+              },
+              {
+                "cells": [
+                  "remediated the determinations",
+                  "never",
+                  "nobody knew it was a step"
+                ],
+                "tone": "bad"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "TONIGHT — the checklist",
+          "view": {
+            "type": "stack",
+            "views": [
+              {
+                "type": "rows",
+                "columns": [
+                  "step",
+                  "clock",
+                  "who"
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      "1 detect",
+                      "02:14 &rarr; 02:17",
+                      "oncall_eng"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "2 decide",
+                      "02:18",
+                      "the rule &mdash; SEV1, senior_eng auto-paged"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "3 act",
+                      "02:19",
+                      "<code>emergency_rollback()</code>"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "4 verify",
+                      "02:25",
+                      "auto-deny 0.084, in band"
+                    ],
+                    "tone": "win"
+                  },
+                  {
+                    "cells": [
+                      "5 remediate",
+                      "02:26 &rarr; 02:31",
+                      "1,250 re-adjudicated, 166 reopened"
+                    ],
+                    "tone": "win",
+                    "new": true
+                  },
+                  {
+                    "cells": [
+                      "6 communicate",
+                      "02:31 &rarr; 02:32",
+                      "medical_director, compliance, status page"
+                    ],
+                    "tone": "win"
+                  }
+                ]
+              },
+              {
+                "type": "note",
+                "text": "3h40m to 11m, and the difference is not skill &mdash; it is that four decisions were made in advance, in daylight, by people who were not tired. Keep the runbook executable so it cannot silently name a renamed flag, rehearse it on a game day, and update it from every postmortem. A runbook nobody has run since it was written is a document, and documents rot."
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

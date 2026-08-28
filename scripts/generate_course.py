@@ -405,11 +405,53 @@ window.addEventListener('hashchange', route);
 buildLanding();
 { const id = (location.hash || '').replace(/^#/, ''); if (id && MODS.some(m => m.id === id)) showModule(id); }
 </script>
+<!-- WT:BUNDLE -->
 </body>
 </html>
 """
 
+# ---------------------------------------------------------------- walkthroughs
+# Interactive step-throughs (../shared/walkthrough). The mounts live here rather
+# than in the built page: index.html is regenerated from MODS, so anything
+# injected into it is lost on the next run. Regenerating restores the
+# WT:BUNDLE placeholder; re-inline the runtime with
+#   python ../shared/walkthrough/build.py --scenarios "walkthroughs/*.json" \
+#          --root . --target course/index.html
+WT_MOUNTS = {
+    "M09": ("ops-canary",
+            "Four rungs, and the product is the one the ladder never climbs. Watch the "
+            "guardrail that reads fine at one percent and breaches at ten."),
+    "M11": ("ops-rollback",
+            "The flag flip is the easy half. The half most runbooks omit is what to do "
+            "about the determinations the bad bundle already issued — watch the second phase."),
+    "M13": ("ops-drift",
+            "Four windows, and for three of them the right answer is silence. The "
+            "teaching moment here is the alert that correctly does not fire."),
+    "M26": ("ops-runbook",
+            "A runbook read as prose is a runbook you improvise from at 2am. Step through "
+            "it as what it is — an executable checklist — and watch where the decision sits."),
+}
+
+
+def apply_walkthrough_mounts():
+    """Insert one content section per mounted module, before its first quiz."""
+    for mod in MODS:
+        pair = WT_MOUNTS.get(mod["id"])
+        if not pair:
+            continue
+        scenario, bridge = pair
+        mount = '<div data-wt="{0}" data-wt-theme="dark"></div>'.format(scenario)
+        if any(mount in (s.get("body") or "") for s in mod["sections"]):
+            continue
+        body = "<p>" + bridge + "</p>" + chr(10) + mount
+        section = {"type": "content", "title": "Walk it, step by step", "body": body}
+        idx = next((i for i, s in enumerate(mod["sections"]) if s["type"] == "quiz"),
+                   len(mod["sections"]))
+        mod["sections"].insert(idx, section)
+
+
 def build():
+    apply_walkthrough_mounts()
     svg_cases = []
     for mid, svg in SVGS.items():
         svg_cases.append('    case "%s": return %s;' % (mid, json.dumps(svg)))

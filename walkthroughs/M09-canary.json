@@ -1,0 +1,398 @@
+{
+  "id": "ops-canary",
+  "badge": "WALKTHROUGH",
+  "color": "#B91C1C",
+  "time": "~4 min",
+  "title": "A ladder that stops on the third rung",
+  "spec": "M09 · shadow → canary → expand → full, with an automatic halt",
+  "intro": "Four stages, 0.0 to 1.00. The bundle clears shadow, clears the 1% canary, and breaches two guardrails at 10% — where <code>on_breach=\"halt_and_rollback\"</code> stops it in 74 seconds. The fourth rung is never reached, and that is the release working.",
+  "provenance": {
+    "kind": "illustrative",
+    "source": "a narrated progressive rollout of a prior-auth bundle; traffic shares, guardrail readings and determination counts are plausible inventions, not measurements"
+  },
+  "foot": "This walks M09's <em>Canary With Auto-Halt</em> — the four <code>canary.stage()</code> calls and the <code>canary.guardrails()</code> block that decides whether each one promotes.",
+  "steps": [
+    {
+      "title": "Stage 1 — shadow, at 0.0 traffic",
+      "narrative": [
+        "<code>canary.stage(\"shadow\", traffic=0.0, duration=\"24h\")</code> is the stage people skip because 0.0 looks like doing nothing. It is doing the most: <code>pa-bundle-v8</code> processes every real prior-auth request in parallel with v7, its determinations written to the log and acted on by nobody.",
+        "Over 24 hours that is 120,000 real requests scored twice. Divergence — the share where v8's decision differs from the one that actually shipped — comes back at <b>2.4%</b>, under the 5% promotion ceiling.",
+        "Shadow catches gross breakage at zero member risk: schema failures, refusals, a prompt that lost its output format. It does not catch subtle quality regressions, because nothing here is graded against truth. That is what the next rung is for."
+      ],
+      "youDo": "Run your next prompt change in shadow for one full traffic cycle before it touches a single live request. It costs inference and buys you the entire class of failures that are obvious in hindsight.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "canary = Rollout(bundle=\"pa-bundle-v8\", baseline=\"pa-bundle-v7\")"
+        },
+        {
+          "kind": "tool",
+          "text": "canary.stage(\"shadow\", traffic=0.0, duration=\"24h\")"
+        },
+        {
+          "kind": "out",
+          "text": "shadow  120,000 requests scored in parallel  live impact: 0 determinations"
+        },
+        {
+          "kind": "out",
+          "text": "divergence vs v7: 2.4%   schema_invalid: 0.0021   refusals: 0.0004"
+        },
+        {
+          "kind": "out-pass",
+          "text": "shadow PASS  divergence 2.4% <= 5.0% ceiling -> promote to canary"
+        }
+      ],
+      "state": {
+        "label": "stage 1 of 4 · shadow",
+        "before": {
+          "title": "TRAFFIC SHARE ON v8",
+          "view": {
+            "type": "bars",
+            "unit": "% of live PA traffic",
+            "max": 100,
+            "items": [
+              {
+                "label": "shadow",
+                "value": 0,
+                "tone": "win",
+                "note": "120,000 requests scored, 0 determinations issued"
+              },
+              {
+                "label": "canary",
+                "value": 1,
+                "note": "not started"
+              },
+              {
+                "label": "expand",
+                "value": 10,
+                "note": "not started"
+              },
+              {
+                "label": "full",
+                "value": 100,
+                "note": "not started"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Stage 2 — 1% live, and the guardrails hold",
+      "narrative": [
+        "Promotion moves 1% of live prior-auth traffic onto v8. At 5,000 determinations an hour that is 50 an hour, and over the six-hour canary window, <b>300 real members</b> get a determination from the new bundle.",
+        "All four guardrails are evaluated continuously against the v7 baseline, not against a fixed number. Auto-deny lands at 0.093 (baseline 0.081, so +0.012 against a +0.03 allowance), override at 0.071 (+0.009 against +0.05), schema-invalid at 0.0017, cost at $0.0101.",
+        "Everything is inside its band, so the rollout promotes itself. Notice that the auto-deny rate did move — it is 1.2 points above baseline. On 300 determinations that is roughly four extra denials, which is small enough to be noise and large enough to be the first tick of the needle."
+      ],
+      "claudeSays": "Promotion is a threshold comparison, not a judgement. Every guardrail is within its allowance, so the controller advances the stage without asking anyone.",
+      "youDo": "Define your guardrails relative to a live baseline rather than as absolute numbers. An auto-deny threshold of '12%' is wrong the moment seasonal mix shifts the baseline.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "canary.stage(\"canary\", traffic=0.01)"
+        },
+        {
+          "kind": "out",
+          "text": "canary 1%  6h00m  300 determinations issued to live members"
+        },
+        {
+          "kind": "out",
+          "text": "auto_deny_rate  0.093  <= baseline 0.081 + 0.03  OK\noverride_rate   0.071  <= baseline 0.062 + 0.05  OK\nschema_invalid  0.0017 <= 0.005                  OK\ncost_per_call   0.0101 <= 0.012                  OK"
+        },
+        {
+          "kind": "out-pass",
+          "text": "4/4 guardrails green -> promote to expand"
+        }
+      ],
+      "state": {
+        "label": "stage 2 of 4 · canary 1%",
+        "before": {
+          "title": "BEFORE — shadow, no live exposure",
+          "view": {
+            "type": "bars",
+            "unit": "% of live PA traffic",
+            "max": 100,
+            "items": [
+              {
+                "label": "shadow",
+                "value": 0,
+                "tone": "win",
+                "note": "complete · divergence 2.4%"
+              },
+              {
+                "label": "canary",
+                "value": 1,
+                "note": "starting"
+              },
+              {
+                "label": "expand",
+                "value": 10,
+                "note": "not started"
+              },
+              {
+                "label": "full",
+                "value": 100,
+                "note": "not started"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — 1% live, four guardrails read",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "guardrail",
+              "allowance",
+              "reading",
+              "verdict"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>auto_deny_rate</code>",
+                  "&le; 0.081 + 0.03 = 0.111",
+                  "0.093",
+                  "PASS &mdash; +0.012 over baseline"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>override_rate</code>",
+                  "&le; 0.062 + 0.05 = 0.112",
+                  "0.071",
+                  "PASS"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>schema_invalid</code>",
+                  "&le; 0.005",
+                  "0.0017",
+                  "PASS"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>cost_per_call</code>",
+                  "&le; $0.012",
+                  "$0.0101",
+                  "PASS"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Stage 3 — 10%, and two guardrails breach",
+      "narrative": [
+        "At 10% the volume goes up tenfold and the noise floor drops with it. Two hours and 48 minutes in, on 1,400 determinations, the auto-deny rate reads <b>0.128</b> — that is +0.047 over baseline against a +0.03 allowance. The override rate breaches in the same window at 0.118, +0.056 against +0.05.",
+        "That 1.2-point tick in the canary was not noise. It was the same regression measured on 300 samples instead of 1,400, sitting just inside a threshold that a tenth of the data could not resolve.",
+        "<code>on_breach=\"halt_and_rollback\"</code> fires. Traffic goes to zero and the flag reverts to v7 in 74 seconds. No human read a dashboard, and no human needed to: at 500 v8 determinations an hour, every minute of hesitation is another eight members getting a decision from a bundle you already know is wrong."
+      ],
+      "claudeSays": "Two of four guardrails exceeded their allowance in the same evaluation. The controller halted the stage, reverted the flag, and paged. It did not attempt to promote, pause, or ask.",
+      "youDo": "Compare your guardrail thresholds against the sample size at 1% traffic. A threshold your canary volume cannot statistically resolve is a threshold that promotes bad bundles.",
+      "terminal": [
+        {
+          "kind": "tool",
+          "text": "canary.stage(\"expand\", traffic=0.10)"
+        },
+        {
+          "kind": "out",
+          "text": "expand 10%  t+00:41  auto_deny_rate 0.104  OK\nexpand 10%  t+01:35  auto_deny_rate 0.116  OK\nexpand 10%  t+02:48  auto_deny_rate 0.128  BREACH"
+        },
+        {
+          "kind": "out-fail",
+          "text": "auto_deny_rate 0.128 > baseline 0.081 + 0.03 (0.111)"
+        },
+        {
+          "kind": "out-fail",
+          "text": "override_rate  0.118 > baseline 0.062 + 0.05 (0.112)"
+        },
+        {
+          "kind": "gate",
+          "text": "on_breach = halt_and_rollback -> traffic 0.10 -> 0.00, flag reverted to v7"
+        },
+        {
+          "kind": "out",
+          "text": "halted in 74s  1,400 determinations issued under v8 at this stage"
+        }
+      ],
+      "state": {
+        "label": "stage 3 of 4 · breach",
+        "before": {
+          "title": "BEFORE — canary readings at 1%",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "guardrail",
+              "allowance",
+              "at 1% · n=300",
+              "verdict"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>auto_deny_rate</code>",
+                  "&le; 0.111",
+                  "0.093",
+                  "PASS"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>override_rate</code>",
+                  "&le; 0.112",
+                  "0.071",
+                  "PASS"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>schema_invalid</code>",
+                  "&le; 0.005",
+                  "0.0017",
+                  "PASS"
+                ],
+                "tone": "win"
+              },
+              {
+                "cells": [
+                  "<code>cost_per_call</code>",
+                  "&le; $0.012",
+                  "$0.0101",
+                  "PASS"
+                ],
+                "tone": "win"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "AFTER — the same guardrails at 10%",
+          "view": {
+            "type": "rows",
+            "columns": [
+              "guardrail",
+              "allowance",
+              "at 10% · n=1,400",
+              "verdict"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "<code>auto_deny_rate</code>",
+                  "&le; 0.111",
+                  "0.128",
+                  "BREACH &mdash; +0.047 over baseline"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>override_rate</code>",
+                  "&le; 0.112",
+                  "0.118",
+                  "BREACH &mdash; +0.056 over baseline"
+                ],
+                "tone": "bad",
+                "new": true
+              },
+              {
+                "cells": [
+                  "<code>schema_invalid</code>",
+                  "&le; 0.005",
+                  "0.0031",
+                  "PASS &mdash; the output format was never the problem"
+                ]
+              },
+              {
+                "cells": [
+                  "<code>cost_per_call</code>",
+                  "&le; $0.012",
+                  "$0.0104",
+                  "PASS"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "The rung that was never climbed",
+      "narrative": [
+        "Add up the exposure: 300 determinations at 1% plus 1,400 at 10% is <b>1,700 members</b> who got a determination from v8. At the excess deny rates each stage actually measured — 1.2 points on the 300, 4.7 points on the 1,400 — that is about <b>70 wrong denials</b> to re-adjudicate. A batch job, an afternoon, done.",
+        "Now price the alternative. A big-bang release over the same eight hours and 48 minutes puts all 44,000 determinations on v8. Same regression, same 4.7 points, <b>2,068 wrong denials</b> — appeals, letters already mailed, a compliance conversation, and the M11 remediation sweep running for hours.",
+        "The ladder is not there to make the release safe. It is there to make the blast radius a number you choose in advance. 1,700 instead of 44,000 is a 96% reduction, and the only reason you got it is that a threshold comparison ran every few minutes while nobody was watching."
+      ],
+      "claudeSays": "The <code>full</code> stage exists in the rollout definition and was never entered. A stage list you always run to the end is a deploy script wearing a canary's name.",
+      "youDo": "Write down what your current release's blast radius would be if the change were wrong. If the answer is 'everyone', you have a deploy, not a rollout.",
+      "terminal": [
+        {
+          "kind": "prompt",
+          "text": "canary.status()"
+        },
+        {
+          "kind": "out",
+          "text": "shadow  PASS    0%    120,000 scored, 0 issued\ncanary  PASS    1%      300 issued\nexpand  BREACH 10%    1,400 issued  -> halted, rolled back\nfull    NOT REACHED"
+        },
+        {
+          "kind": "out-pass",
+          "text": "blast radius 1,700 determinations  (big-bang equivalent: 44,000)"
+        },
+        {
+          "kind": "out",
+          "text": "handoff -> M11 remediation: re-adjudicate 1,700, expect ~70 changed decisions"
+        }
+      ],
+      "state": {
+        "label": "blast radius, chosen in advance",
+        "before": {
+          "title": "MEMBERS EXPOSED TO v8",
+          "view": {
+            "type": "bars",
+            "unit": "determinations",
+            "max": 44000,
+            "items": [
+              {
+                "label": "big-bang at 100%",
+                "value": 44000,
+                "tone": "bad",
+                "note": "same 8h48m window, ~2,068 wrong denials"
+              },
+              {
+                "label": "progressive rollout",
+                "value": 1700,
+                "tone": "win",
+                "note": "300 at 1% + 1,400 at 10%, ~70 wrong denials"
+              },
+              {
+                "label": "shadow only",
+                "value": 0,
+                "tone": "win",
+                "note": "24h of real requests, zero members affected"
+              }
+            ]
+          }
+        },
+        "after": {
+          "title": "THE RULE",
+          "view": {
+            "type": "note",
+            "text": "Shadow proves it runs. The canary proves it is not obviously worse. The expand stage is where a real regression finally has enough samples to cross a threshold &mdash; so make sure the ladder actually stops there. Guardrails relative to a live baseline, an automatic <code>halt_and_rollback</code>, and a remediation handoff for whatever the exposed cohort was: that is a rollout. Everything else is a deploy with extra steps."
+          }
+        }
+      }
+    }
+  ]
+}
